@@ -4,7 +4,7 @@ const axios = require("axios");
 const https = require('https');
 const { createReadStream } = require("fs");
 
-const API_KEY = "AIzaSyAygWrPYHFVzL0zblaZPkRcgIFZkBNAW9g";
+const API_KEY = "AIzaSyCDDV9GJU_IeepE1hbS-rrGclbqamFVV5Y";
 
 async function OutputUrl(url) {
   try {
