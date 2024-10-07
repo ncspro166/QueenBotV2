@@ -14,7 +14,7 @@ module.exports = {
       en: "Display bot owner information"
     },
     longDescription: {
-      en: "Display detailed information about the bot owner, including a random fun fact"
+      en: "Display detailed information about the bot owner,"
     },
     category: "info",
     guide: {
@@ -43,14 +43,9 @@ module.exports = {
       // Get current time in Asia/Kolkata timezone
       const currentTime = moment().tz("Asia/Kolkata").format("MMMM Do YYYY, h:mm:ss A");
 
-      // Fetch a random fun fact
-      const factResponse = await axios.get('https://api.api-ninjas.com/v1/facts?limit=1', {
-        headers: { 'X-Api-Key': 'mz2frvHwqBCS3dTjkjM2wA==RaABY2HqVA2A58w0' }
-      });
-      if (!factResponse || !factResponse.data || factResponse.data.length === 0) {
-        throw new Error('Fun fact not found.');
-      }
-      const funFact = factResponse.data[0].fact;
+      // Fetch a random quote from an API
+      const quoteResponse = await axios.get('https://api.quotable.io/random');
+      const randomQuote = quoteResponse.data.content;
 
       // Download the image
       const imageUrl = 'https://i.imgur.com/JRPaKw7.png';
@@ -69,9 +64,9 @@ module.exports = {
    📞 Telegram: ${ownerInfo.telegram}
    🎮 Discord: ${ownerInfo.discord}
 
-🕰️ Current Time (Asia/Kolkata): ${currentTime}
+🕰️ Current Time India: ${currentTime}
 
-🎨 Fun Fact: ${funFact}
+🎨 Quote: "${randomQuote}"
 
 Thanks for using our bot! 😊
       `.trim();
