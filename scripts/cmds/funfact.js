@@ -2,7 +2,7 @@ const axios = require('axios');
 
 module.exports = {
   config: {
-    name: "funfacts",
+    name: "ff",
     version: "1.0",
     author: "Priyanshi Kaur",
     countDown: 5,
