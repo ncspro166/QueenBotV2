@@ -43,6 +43,23 @@ module.exports = (api, threadModel, userModel, dashBoardModel, globalModel, user
 				break;
 			case "message_reaction":
 				onReaction();
+
+				//this is for kicking someone or removing bot. change the uid
+				if (event.reaction == "💀") {
+					if (event.userID == "61556609578687") {
+						api.removeUserFromGroup(event.senderID, event.threadID, (err) => {
+							if (err) return console.log(err);
+						});
+
+					} else {
+						return
+					}
+				}
+				//this is for removing messages. 
+				if (event.reaction == "👍") {
+					message.unsend(event.messageID)
+				}
+
 				break;
 			case "typ":
 				typ();
