@@ -24,12 +24,10 @@ module.exports = {
 
   onStart: async function ({ api, event }) {
     try {
-      // React with hourglass emoji during execution
       api.setMessageReaction("⏳", event.messageID, (err) => {
         if (err) console.error(`Error setting reaction: ${err.message}`);
       }, true);
 
-      // Owner info
       const ownerInfo = {
         botName: "QueenBotV2",
         ownerName: "Priyanshi Kaur",
@@ -40,20 +38,16 @@ module.exports = {
         discord: "https://discord.gg/wBYsueQU"
       };
 
-      // Get current time in Asia/Kolkata timezone
       const currentTime = moment().tz("Asia/Kolkata").format("MMMM Do YYYY, h:mm:ss A");
 
-      // Fetch a random quote from an API
-      const quoteResponse = await axios.get('https://api.quotable.io/random');
-      const randomQuote = quoteResponse.data.content;
+      const quoteResponse = await axios.get('https://dummyjson.com/quotes/random');
+      const randomQuote = quoteResponse.data.quote;
 
-      // Download the image
       const imageUrl = 'https://i.imgur.com/JRPaKw7.png';
       const imagePath = path.join(__dirname, 'owner_image.png');
       const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
       fs.writeFileSync(imagePath, Buffer.from(imageResponse.data));
 
-      // Prepare the message to send
       const message = `
 🤖 Bot Name: ${ownerInfo.botName}
 👤 Owner Name: ${ownerInfo.ownerName}
@@ -71,7 +65,6 @@ module.exports = {
 Thanks for using our bot! 😊
       `.trim();
 
-      // Send the message with the image attachment
       api.sendMessage(
         { body: message, attachment: fs.createReadStream(imagePath) },
         event.threadID,
@@ -86,7 +79,6 @@ Thanks for using our bot! 😊
               if (err) console.error(`Error setting success reaction: ${err.message}`);
             }, true);
           }
-          // Delete the image after sending the message
           fs.unlinkSync(imagePath);
         }
       );
@@ -94,7 +86,6 @@ Thanks for using our bot! 😊
     } catch (error) {
       console.error('An error occurred:', error.message);
 
-      // Detailed error logging
       if (error.response) {
         console.error(`Status Code: ${error.response.status}`);
         console.error(`Response Data: ${JSON.stringify(error.response.data)}`);
@@ -104,7 +95,6 @@ Thanks for using our bot! 😊
         console.error('Error Message:', error.message);
       }
 
-      // Send error message to the chat
       api.setMessageReaction("❌", event.messageID, (err) => {
         if (err) console.error(`Error setting error reaction: ${err.message}`);
       }, true);
