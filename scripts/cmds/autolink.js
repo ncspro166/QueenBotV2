@@ -3,7 +3,7 @@ const fs = require("fs");
 
 module.exports = {
     config: {
-        name: 'autolink',
+        name: 'download',
         version: '1.3',
         author: 'Priyanshi Kaur',
         countDown: 5,
