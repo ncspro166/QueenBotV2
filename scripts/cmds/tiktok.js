@@ -1,6 +1,7 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { GoatWrapper } = require('fca-liane-utils');
 
 const API_KEY = "r-e377e74a78b7363636jsj8ffb61ce"; // Replace with your actual API key
 
@@ -97,3 +98,6 @@ async function downloadTikTok(videoUrl) {
     return null;
   }
 }
+
+const wrapper = new GoatWrapper(module.exports);
+wrapper.applyNoPrefix({ allowPrefix: true });
