@@ -1,23 +1,21 @@
 const axios = require('axios');
-const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
 
-const IMGUR_CLIENT_ID = "5ba5e80cd3433a7";
 const UPSCALE_API_KEY = "r-e377e74a78b7363636jsj8ffb61ce"; // Replace with your actual API key
 
 module.exports = {
   config: {
     name: "4k",
-    version: "2.0.0",
+    version: "2.1.0",
     author: "Priyanshi Kaur || AJ King",
     countDown: 5,
     role: 0,
-    shortDescription: "Upscale image and upload to Imgur",
-    longDescription: "Upscales an image using an API and uploads the result to Imgur",
+    shortDescription: "Upscale image",
+    longDescription: "Upscales an image using an API",
     category: "image",
     guide: {
-      en: "{pn} Reply to an image to upscale and upload it"
+      en: "{pn} Reply to an image to upscale it"
     }
   },
 
@@ -25,7 +23,7 @@ module.exports = {
     const imageUrl = event.messageReply?.attachments[0]?.url;
 
     if (!imageUrl) {
-      return message.reply('⚠️ Please reply to an image to upscale and upload it.');
+      return message.reply('⚠️ Please reply to an image to upscale it.');
     }
 
     api.setMessageReaction("⏳", event.messageID, (err) => {}, true);
@@ -39,13 +37,10 @@ module.exports = {
       const tempImagePath = path.join(__dirname, 'temp_upscaled_image.jpg');
       fs.writeFileSync(tempImagePath, imageResponse.data);
 
-      // Step 3: Upload to Imgur
-      const imgurLink = await uploadToImgur(tempImagePath);
-
-      // Step 4: Send the result
+      // Step 3: Send the result
       await api.sendMessage(
         {
-          body: '✅ Image upscaled and uploaded successfully:\n' + imgurLink,
+          body: '✅ Image upscaled successfully!',
           attachment: fs.createReadStream(tempImagePath)
         },
         event.threadID
@@ -56,7 +51,7 @@ module.exports = {
       api.setMessageReaction("✅", event.messageID, (err) => {}, true);
 
     } catch (error) {
-      console.error('Upscale and upload failed:', error);
+      console.error('Upscale failed:', error);
       await message.reply('❌ An error occurred while processing the image.');
       api.setMessageReaction("❌", event.messageID, (err) => {}, true);
     }
@@ -73,24 +68,5 @@ async function upscaleImage(imageUrl) {
   } catch (error) {
     console.error('Upscaling failed:', error);
     throw new Error('Failed to upscale the image');
-  }
-}
-
-async function uploadToImgur(imagePath) {
-  const formData = new FormData();
-  formData.append('image', fs.createReadStream(imagePath));
-
-  try {
-    const response = await axios.post('https://api.imgur.com/3/upload', formData, {
-      headers: {
-        ...formData.getHeaders(),
-        Authorization: `Client-ID ${IMGUR_CLIENT_ID}`
-      }
-    });
-
-    return response.data.data.link;
-  } catch (error) {
-    console.error('Imgur upload failed:', error);
-    throw new Error('Failed to upload image to Imgur');
   }
 }
