@@ -1,70 +1,28 @@
-const fs = require("fs-extra");
-const path = require("path");
+const youtubesearchapi = require("youtube-search-api");
 const axios = require("axios");
-const https = require('https');
-const { createReadStream } = require("fs");
+const fs = require("fs");
+const path = require("path");
+const childProcess = require("child_process");
 
-const API_KEY = "AIzaSyCDDV9GJU_IeepE1hbS-rrGclbqamFVV5Y";
+async function getDownloadUrl(url) {
+  const curlCommand = `curl -X POST \
+  https://cnvmp3.com/fetch.php \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"${url}","downloadMode":"audio","filenameStyle":"pretty","audioBitrate":"96"}'`;
 
-async function OutputUrl(url) {
-  try {
-    const payload = {
-      filenamePattern: "pretty",
-      isAudioOnly: true,
-      url: url,
-    };
-
-    const response = await axios.post("https://cnvmp3.com/fetch.php", payload);
-    const jsonData = response.data;
-    const downloadUrl = jsonData.url;
-
-    return downloadUrl;
-  } catch (error) {
-    console.error("Error in OutputUrl:", error);
-    throw error;
-  }
+    const output = childProcess.execSync(curlCommand);
+    const jsonData = JSON.parse(output.toString());
+    const videoDownloadUrl = jsonData.url;
+    return videoDownloadUrl;
 }
-
-async function searchYouTubeVideo(query) {
-  try {
-    const response = await axios.get(
-      "https://www.googleapis.com/youtube/v3/search",
-      {
-        params: {
-          part: "snippet",
-          q: query,
-          key: API_KEY,
-          type: "video",
-          maxResults: 1,
-        },
-      }
-    );
-
-    if (response.data.items && response.data.items.length > 0) {
-      const video = response.data.items[0];
-      const videoTitle = video.snippet.title;
-      const videoId = video.id.videoId;
-      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-      return { title: videoTitle, url: videoUrl };
-    } else {
-      console.log("No videos found for your query.");
-      return null;
-    }
-  } catch (error) {
-    console.error("Error fetching data from YouTube API:", error);
-    return null;
-  }
-}
-
 
 module.exports = {
   config: {
     name: "sing",
     aliases: ["music", "song"],
-    version: "1.0.3",
+    version: "1.3.7",
     role: 0,
-    author: "Shikaki | Base code: AceGun",
+    author: "Shikaki",
     cooldowns: 5,
     description: "Download music from Youtube",
     guide: { en: "{pn}music name" },
@@ -72,82 +30,51 @@ module.exports = {
   },
 
   onStart: async ({ event, message }) => {
-    const input = event.body;
-    const data = input.split(" ");
+    const input = event.body.split(" ");
+    if (input.length < 2) return message.reply("Please specify a music name!");
 
-    if (data.length < 2) {
-      return message.reply("Please specify a music name!");
+    input.shift();
+    const musicName = input.join(" ");
+    message.reply(`Searching music "${musicName}", please wait...`);
+
+    const searchResults = await youtubesearchapi.GetListByKeyword(musicName, false, 2);
+    if (!searchResults.items.length) return message.reply("No music found.");
+
+    let downloadUrl, musicTitle;
+    for (let i = 0; i < Math.min(2, searchResults.items.length); i++) {
+      try {
+        const videoUrl = `https://www.youtube.com/watch?v=${searchResults.items[i].id}`;
+        musicTitle = searchResults.items[i].title;
+        downloadUrl = await getDownloadUrl(videoUrl);
+        if (downloadUrl) break;
+      } catch (error) {
+        console.error(`Error processing video URL ${searchResults.items[i].id}:`, error);
+        if (i === 1) return message.reply("An error occurred while processing the command.");
+      }
     }
 
-    data.shift();
-    const musicName = data.join(" ");
+    if (!downloadUrl) return message.reply("No download URL found.");
 
     try {
-      message.reply(`Searching music "${musicName}", please wait...`);
+      const response = await axios.get(downloadUrl, { responseType: "stream" });
+      const filePath = path.join(__dirname, "..", "..", "temp", `${Date.now()}.mp3`);
 
-      const searchResult = await searchYouTubeVideo(musicName);
-
-      if (!searchResult) {
-        return message.reply("No music found.");
-      }
-
-      const musicUrl = searchResult.url;
-      const musicTitle = searchResult.title;
-
-      let downloadUrl;
-      try {
-        downloadUrl = await OutputUrl(musicUrl);
-      } catch (error) {
-        console.error(`Error processing ${musicUrl}:`, error);
-        return message.reply("Sorry, an error occurred while processing the command.");
-      }
-
-      if (!downloadUrl) {
-        return message.reply("No working music links found.");
-      }
-
-      const ytaudioDir = path.join(__dirname, '..', '..', 'ytaudio');
-      fs.ensureDirSync(ytaudioDir);
-      const fileName = `${Date.now()}.mp3`;
-      const filePath = path.join(ytaudioDir, fileName);
-
-      const file = fs.createWriteStream(filePath);
-      https.get(downloadUrl, function(response) {
-        response.pipe(file);
-        file.on('finish', function() {
-          file.close(() => {
-            console.info("[DOWNLOADER] Downloaded");
-
-            fs.stat(filePath, (err, stats) => {
-              if (err) {
-                console.error("[ERROR] File stat error:", err);
-                message.reply("Sorry, an error occurred while processing the command.");
-                fs.unlink(filePath, () => {});
-                return;
-              }
-
-              if (stats.size > 26214400) {
-                fs.unlink(filePath, () => {});
-                message.reply("❌ | The file could not be sent because it is larger than 25MB.");
-                return;
-              }
-
-              message.reply({
-                body: `💁🏻‍♂ • Here's your music!\n\n♥ • Title: ${musicTitle}`,
-                attachment: createReadStream(filePath),
-              }, () => {
-                fs.unlink(filePath, () => {});
-              });
-            });
-          });
-        });
-      }).on('error', function(err) { 
-        console.error("[ERROR]", err);
-        message.reply("Sorry, an error occurred while processing the command.");
+      const writer = fs.createWriteStream(filePath);
+      response.data.pipe(writer);
+      await new Promise((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", reject);
       });
+
+      await message.reply({
+        body: `💁🏻‍♂ • Here's your music!\n\n♥ • Title: ${musicTitle}`,
+        attachment: fs.createReadStream(filePath),
+      });
+
+      fs.unlinkSync(filePath);
     } catch (error) {
-      console.error("[ERROR]", error);
-      message.reply("Sorry, an error occurred while processing the command.");
+      console.error("[ERROR] Downloading or sending file:", error);
+      message.reply("An error occurred while processing the command.");
     }
   },
 };
