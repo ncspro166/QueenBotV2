@@ -1,7 +1,11 @@
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+
 module.exports.config = {
     name: "rbg",
-    version: "1.0",
-    author: "Assistant",
+    version: "1.5.0",
+    author: "Priyanshi Kaur",
     countDown: 5,
     role: 0,
     shortDescription: "Remove image background",
@@ -25,7 +29,7 @@ module.exports.onStart = async function ({ api, event, message }) {
     }
 
     try {
-        const apiKey = "r-e377e74a78b7363636jsj8ffb61ce"; // Replace with your API key
+        const apiKey = "r-e377e74a78b7363636jsj8ffb61ce";
         message.reply("⌛ Removing background from your image...");
 
         const response = await axios({
@@ -38,25 +42,21 @@ module.exports.onStart = async function ({ api, event, message }) {
             responseType: 'arraybuffer'
         });
 
-        // Create temporary file path
         const tempFilePath = path.join(__dirname, "temp", `nobg_${Date.now()}.png`);
         
-        // Ensure temp directory exists
         if (!fs.existsSync(path.join(__dirname, "temp"))) {
             fs.mkdirSync(path.join(__dirname, "temp"));
         }
 
-        // Write the image to temporary file
         fs.writeFileSync(tempFilePath, Buffer.from(response.data));
 
-        // Send the processed image
         await api.sendMessage(
             {
                 attachment: fs.createReadStream(tempFilePath),
                 body: "✨ Here's your image with background removed!"
             },
             threadID,
-            () => fs.unlinkSync(tempFilePath) // Clean up temp file after sending
+            () => fs.unlinkSync(tempFilePath)
         );
 
     } catch (error) {
