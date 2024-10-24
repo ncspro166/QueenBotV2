@@ -5,7 +5,7 @@ const { utils } = global;
 module.exports = {
     config: {
         name: "prefix",
-        version: "1.7",
+        version: "1.8",
         author: "Priyanshi Kaur",
         countDown: 5,
         role: 0,
@@ -37,44 +37,56 @@ module.exports = {
                 + "🎨 Flux - No prefix cmd, allows you to generate your imagination\n"
                 + "🧠 .g - Gemini 1.5 flash response to your every question and image reply support\n"
                 + "🎵 .s - Listen to songs from Spotify using name or link\n\n"
-                + "Feel free to ask me anything! I'm here to make your day brighter! 💖"
+                + "Feel free to ask me anything! I'm here to make your day brighter! 💖",
+            error: "❌ An error occurred while fetching the meme. Please try again."
         }
     },
 
     onStart: async function ({ message, role, args, commandName, event, threadsData, getLang }) {
-        if (!args[0]) {
-            const gifUrl = "https://imgur.com/a/gcpFl2s";
-            const attachment = await global.utils.getStreamFromURL(gifUrl);
-            return message.reply({
-                body: getLang("botInfo", global.GoatBot.config.prefix, utils.getPrefix(event.threadID)),
-                attachment: attachment
-            });
-        }
+        try {
+            if (!args[0]) {
+                const memeApi = "https://meme-api.com/gimme";
+                const response = await axios.get(memeApi);
+                
+                if (response.data && response.data.url) {
+                    const memeAttachment = await global.utils.getStreamFromURL(response.data.url);
+                    if (!memeAttachment) throw new Error("Failed to get meme attachment");
 
-        if (args[0] == 'reset') {
-            await threadsData.set(event.threadID, null, "data.prefix");
-            return message.reply(getLang("reset", global.GoatBot.config.prefix));
-        }
+                    return message.reply({
+                        body: getLang("botInfo", global.GoatBot.config.prefix, utils.getPrefix(event.threadID)),
+                        attachment: memeAttachment
+                    });
+                }
+                throw new Error("Invalid meme data");
+            }
 
-        const newPrefix = args[0];
-        const formSet = {
-            commandName,
-            author: event.senderID,
-            newPrefix
-        };
+            if (args[0] == 'reset') {
+                await threadsData.set(event.threadID, null, "data.prefix");
+                return message.reply(getLang("reset", global.GoatBot.config.prefix));
+            }
 
-        if (args[1] === "-g")
-            if (role < 2)
-                return message.reply(getLang("onlyAdmin"));
-            else
+            const newPrefix = args[0];
+            const formSet = {
+                commandName,
+                author: event.senderID,
+                newPrefix
+            };
+
+            if (args[1] === "-g") {
+                if (role < 2) return message.reply(getLang("onlyAdmin"));
                 formSet.setGlobal = true;
-        else
-            formSet.setGlobal = false;
+            } else {
+                formSet.setGlobal = false;
+            }
 
-        return message.reply(args[1] === "-g" ? getLang("confirmGlobal") : getLang("confirmThisThread"), (err, info) => {
-            formSet.messageID = info.messageID;
-            global.GoatBot.onReaction.set(info.messageID, formSet);
-        });
+            return message.reply(args[1] === "-g" ? getLang("confirmGlobal") : getLang("confirmThisThread"), (err, info) => {
+                formSet.messageID = info.messageID;
+                global.GoatBot.onReaction.set(info.messageID, formSet);
+            });
+        } catch (error) {
+            console.error(error);
+            return message.reply(getLang("error"));
+        }
     },
 
     onReaction: async function ({ message, threadsData, event, Reaction, getLang }) {
@@ -94,12 +106,24 @@ module.exports = {
 
     onChat: async function ({ event, message, getLang }) {
         if (event.body && event.body.toLowerCase() === "prefix") {
-            const gifUrl = "https://i.imgur.com/iwFQpbR.jpeg";
-            const attachment = await global.utils.getStreamFromURL(gifUrl);
-            return message.reply({
-                body: getLang("botInfo", global.GoatBot.config.prefix, utils.getPrefix(event.threadID)),
-                attachment: attachment
-            });
+            try {
+                const memeApi = "https://meme-api.com/gimme";
+                const response = await axios.get(memeApi);
+                
+                if (response.data && response.data.url) {
+                    const memeAttachment = await global.utils.getStreamFromURL(response.data.url);
+                    if (!memeAttachment) throw new Error("Failed to get meme attachment");
+
+                    return message.reply({
+                        body: getLang("botInfo", global.GoatBot.config.prefix, utils.getPrefix(event.threadID)),
+                        attachment: memeAttachment
+                    });
+                }
+                throw new Error("Invalid meme data");
+            } catch (error) {
+                console.error(error);
+                return message.reply(getLang("error"));
+            }
         }
     }
 };
