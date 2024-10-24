@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports.config = {
-    name: "upscale",
+    name: "4k",
     version: "1.0.0",
     author: "Priyanshi Kaur",
     countDown: 5,
