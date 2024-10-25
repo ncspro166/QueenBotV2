@@ -23,7 +23,7 @@ module.exports = {
 
         //clearing helps to start new chat and reduce hallucination and errors.
         try {
-            const res = await axios.get(https://reka.onrender.com/chat?chatId=${uid}&prompt=clear);
+            const res = await axios.get(`https://reka.onrender.com/chat?chatId=${uid}&prompt=clear`);
             if (res.status !== 200) {
                 console.error("Error clearing chat:", res.status, res.data);
             }
@@ -55,9 +55,9 @@ module.exports = {
             let response;
             if (url) {
                 url = await shortenURL(url);
-                response = await axios.get(https://reka.onrender.com/chat?uid=${uid}&prompt=${encodeURIComponent(prompt)}${url ? `&url=${encodeURIComponent(url)}&urlType=${mimeType} : ''}`);
+                response = await axios.get(`https://reka.onrender.com/chat?uid=${uid}&prompt=${encodeURIComponent(prompt)}${url ? `&url=${encodeURIComponent(url)}&urlType=${mimeType}` : ''}`);
             } else {
-                response = await axios.get(https://reka.onrender.com/chat?uid=${uid}&prompt=${encodeURIComponent(prompt)});
+                response = await axios.get(`https://reka.onrender.com/chat?uid=${uid}&prompt=${encodeURIComponent(prompt)}`);
             }
             message.reply(response.data.message, (err, info) => { //Updated this line
                 if (!err) {
@@ -84,7 +84,7 @@ module.exports = {
 
         api.setMessageReaction("⌛", event.messageID, () => { }, true);
         try {
-            let response = await axios.get(https://reka.onrender.com/chat?uid=${uid}&prompt=${encodeURIComponent(prompt)});
+            let response = await axios.get(`https://reka.onrender.com/chat?uid=${uid}&prompt=${encodeURIComponent(prompt)}`);
             message.reply(response.data.message, (err, info) => {
                 if (!err) {
                     global.GoatBot.onReply.set(info.messageID, {
