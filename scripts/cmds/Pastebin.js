@@ -1,16 +1,18 @@
 const axios = require('axios');
 const FormData = require('form-data');
-
-const API_DEV_KEY = 'a5NjYtjOENDQlZur3XCF4-H4vLcxkjeh';
+const fs = require('fs');
+const PASTEBIN_API_KEY = 'a5NjYtjOENDQlZur3XCF4-H4vLcxkjeh';
 const PASTEBIN_API_URL = 'https://pastebin.com/api/api_post.php';
+const MOCKY_API_URL = 'https://api.mocky.io/api/mock';
+const MOCKY_SECRET = 'Y6PFNNYJO2DCCF4EOmTeB7C7LuWCX0SaIx52';
 
-async function createPaste(text, title = '', expiration = '1W', privacy = '0') {
+async function createPastebinPaste(text, title = '', expiration = '1W', privacy = '0') {
     try {
         const formData = new FormData();
-        formData.append('api_dev_key', API_DEV_KEY);
+        formData.append('api_dev_key', PASTEBIN_API_KEY);
         formData.append('api_option', 'paste');
         formData.append('api_paste_code', text);
-        formData.append('api_paste_private', privacy); // 0=public, 1=unlisted, 2=private
+        formData.append('api_paste_private', privacy);
         formData.append('api_paste_name', title);
         formData.append('api_paste_expire_date', expiration);
 
@@ -18,115 +20,142 @@ async function createPaste(text, title = '', expiration = '1W', privacy = '0') {
             headers: formData.getHeaders()
         });
 
-        if (response.data.startsWith('https://pastebin.com/')) {
-            return response.data;
-        } else {
-            throw new Error(`Pastebin API Error: ${response.data}`);
-        }
+        return {
+            url: response.data,
+            raw: response.data.replace('pastebin.com', 'pastebin.com/raw')
+        };
     } catch (error) {
-        throw new Error(`Failed to create paste: ${error.message}`);
+        throw new Error(`Pastebin Error: ${error.message}`);
+    }
+}
+
+async function createMockyPaste(content) {
+    try {
+        const response = await axios.post(MOCKY_API_URL, {
+            status: 200,
+            content,
+            content_type: 'application/json',
+            charset: 'UTF-8',
+            secret: MOCKY_SECRET,
+            expiration: "1year"
+        });
+        return {
+            url: response.data.link,
+            raw: `${response.data.link}/raw`
+        };
+    } catch (error) {
+        throw new Error(`Mocky Error: ${error.message}`);
     }
 }
 
 function parseArgs(args) {
-    let title = '';
-    let expiration = '1W';
-    let privacy = '0';
-    let content = '';
+    const options = {
+        title: 'Untitled Paste',
+        expiration: '1W',
+        privacy: '0',
+        service: 'pastebin',
+        content: '',
+        fileName: '',
+    };
 
     const validExpirations = ['N', '10M', '1H', '1D', '1W', '2W', '1M', '6M', '1Y'];
     const validPrivacy = ['0', '1', '2'];
+    const validServices = ['pastebin', 'mocky'];
 
     for (let i = 0; i < args.length; i++) {
-        if (args[i].startsWith('-t:')) {
-            title = args[i].substring(3);
-        } else if (args[i].startsWith('-e:') && validExpirations.includes(args[i].substring(3))) {
-            expiration = args[i].substring(3);
-        } else if (args[i].startsWith('-p:') && validPrivacy.includes(args[i].substring(3))) {
-            privacy = args[i].substring(3);
+        const arg = args[i];
+        if (arg.startsWith('-t:')) {
+            options.title = arg.substring(3);
+        } else if (arg.startsWith('-e:') && validExpirations.includes(arg.substring(3))) {
+            options.expiration = arg.substring(3);
+        } else if (arg.startsWith('-p:') && validPrivacy.includes(arg.substring(3))) {
+            options.privacy = arg.substring(3);
+        } else if (arg.startsWith('-s:') && validServices.includes(arg.substring(3))) {
+            options.service = arg.substring(3);
+        } else if (arg.startsWith('-f:')) {
+            options.fileName = arg.substring(3);
         } else {
-            content += args[i] + ' ';
+            options.content += arg + ' ';
         }
     }
 
-    return {
-        title: title || 'Untitled Paste',
-        expiration,
-        privacy,
-        content: content.trim()
-    };
+    options.content = options.content.trim();
+    return options;
 }
 
 module.exports = {
     config: {
-        name: "pastebin",
-        aliases: ["bin", "paste"],
-        version: "1.0",
+        name: "paste",
+        aliases: ["pastebin", "mocky", "bin"],
+        version: "2.0.0",
         author: "Priyanshi Kaur",
         countDown: 5,
         role: 0,
-        shortDescription: "Create Pastebin paste",
-        longDescription: "Create a paste on Pastebin with custom title, expiration, and privacy settings",
+        shortDescription: "Create pastes on various services",
+        longDescription: "Upload text or code to Pastebin or Mocky with various options",
         category: "utility",
         guide: {
             en: `
-                Usage: {p}pastebin [options] <content>
-                Or reply to a message with: {p}pastebin [options]
+                Usage: 
+                1. Direct text: {p}paste [options] <content>
+                2. Reply to message: {p}paste [options]
+                3. Upload command: {p}paste -f:commandName
 
                 Options:
                 -t:<title> : Set paste title
                 -e:<expiration> : Set expiration (N, 10M, 1H, 1D, 1W, 2W, 1M, 6M, 1Y)
                 -p:<privacy> : Set privacy (0=public, 1=unlisted, 2=private)
+                -s:<service> : Select service (pastebin, mocky)
+                -f:<filename> : Upload command file
 
                 Examples:
-                {p}pastebin -t:MyCode -e:1D Some code here
-                {p}pastebin -p:1 Private content here
-                Reply to a message with: {p}pastebin -t:SavedText`
+                {p}paste -t:MyCode -e:1D Some code here
+                {p}paste -s:mocky -f:help
+                Reply with: {p}paste -t:SavedText`
         }
     },
 
     onStart: async function ({ api, event, args, message }) {
         try {
+            const options = parseArgs(args);
             let textToPaste = '';
-            let options = parseArgs(args);
+            let processingMessage = null;
+            processingMessage = await message.reply("📤 Processing your request...");
 
-            // Handle reply case
-            if (event.type === "message_reply") {
+            if (options.fileName) {
+                const filePath = __dirname + `/${options.fileName}.js`;
+                if (!fs.existsSync(filePath)) {
+                    throw new Error(`File not found: ${options.fileName}.js`);
+                }
+                textToPaste = fs.readFileSync(filePath, 'utf8');
+                options.title = options.title === 'Untitled Paste' ? `Command: ${options.fileName}` : options.title;
+            } else if (event.type === "message_reply") {
                 textToPaste = event.messageReply.body;
-                
-                // If there are attachments in the reply
                 if (event.messageReply.attachments?.length > 0) {
                     const attachmentInfo = event.messageReply.attachments.map(att => 
                         `[Attachment: ${att.type}${att.url ? ` - ${att.url}` : ''}]`
                     ).join('\n');
                     textToPaste += '\n\nAttachments:\n' + attachmentInfo;
                 }
-                
-                // If no specific title was provided for reply
-                if (!options.title || options.title === 'Untitled Paste') {
-                    options.title = 'Saved Reply';
-                }
-            } else {
-                // Direct command case
-                if (!options.content) {
-                    return message.reply("⚠️ Please provide content to paste or reply to a message.");
-                }
+                options.title = options.title === 'Untitled Paste' ? 'Saved Reply' : options.title;
+            } else if (options.content) {
                 textToPaste = options.content;
+            } else {
+                throw new Error("Please provide content to paste, reply to a message, or specify a command file.");
             }
 
-            // Show processing message
-            api.setMessageReaction("⌛", event.messageID, (err) => {}, true);
-            message.reply("📤 Creating paste...");
+            let pasteResult;
+            if (options.service === 'mocky') {
+                pasteResult = await createMockyPaste(textToPaste);
+            } else {
+                pasteResult = await createPastebinPaste(
+                    textToPaste,
+                    options.title,
+                    options.expiration,
+                    options.privacy
+                );
+            }
 
-            // Create the paste
-            const pasteURL = await createPaste(
-                textToPaste,
-                options.title,
-                options.expiration,
-                options.privacy
-            );
-
-            // Format expiration for display
             const expirationMap = {
                 'N': 'Never',
                 '10M': '10 Minutes',
@@ -139,21 +168,31 @@ module.exports = {
                 '1Y': '1 Year'
             };
 
-            // Send success message
             const successMessage = `
 📋 Paste created successfully!
 
-🔗 URL: ${pasteURL}
-📝 Title: ${options.title}
+🔗 URL: ${pasteResult.url}
+📝 Raw URL: ${pasteResult.raw}
+📑 Title: ${options.title}
+🔧 Service: ${options.service}
+${options.service === 'pastebin' ? `
 ⏳ Expires: ${expirationMap[options.expiration]}
-🔒 Privacy: ${options.privacy === '0' ? 'Public' : options.privacy === '1' ? 'Unlisted' : 'Private'}
+🔒 Privacy: ${options.privacy === '0' ? 'Public' : options.privacy === '1' ? 'Unlisted' : 'Private'}` : ''}
 `;
 
-            message.reply(successMessage);
+            if (processingMessage) {
+                api.editMessage(successMessage, processingMessage.messageID);
+            }
+
             api.setMessageReaction("✅", event.messageID, (err) => {}, true);
 
         } catch (error) {
-            message.reply(`❌ Error: ${error.message}`);
+            const errorMessage = `❌ Error: ${error.message}`;
+            if (processingMessage) {
+                api.editMessage(errorMessage, processingMessage.messageID);
+            } else {
+                message.reply(errorMessage);
+            }
             api.setMessageReaction("❌", event.messageID, (err) => {}, true);
         }
     }
