@@ -1,63 +1,24 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
+const play = require('play-dl');
 
 const SPOTIFY_CLIENT_ID = "41dd52e608ee4c4ba8b196b943db9f73";
 const SPOTIFY_CLIENT_SECRET = "5c7b438712b04d0a9fe2eaae6072fa16";
-
-// Utility function to execute spotdl command
-async function downloadWithSpotDL(trackUrl, outputPath) {
-  try {
-    // Create Python script content
-    const pythonScript = `
-import sys
-from spotdl import Spotdl
-
-spotdl = Spotdl(
-    client_id="${SPOTIFY_CLIENT_ID}",
-    client_secret="${SPOTIFY_CLIENT_SECRET}",
-    output=r"${outputPath}",
-    format="mp3"
-)
-
-songs = spotdl.download_url("${trackUrl}")
-print(songs[0]['path'])  # Print the path of downloaded file
-`;
-
-    // Save Python script temporarily
-    const scriptPath = path.join(__dirname, 'temp_download_script.py');
-    await fs.writeFile(scriptPath, pythonScript);
-
-    // Execute Python script
-    const { stdout } = await execPromise(`python3 "${scriptPath}"`);
-    
-    // Clean up temporary script
-    await fs.remove(scriptPath);
-    
-    // Return the path to downloaded file
-    return stdout.trim();
-  } catch (error) {
-    console.error('Download error:', error);
-    throw new Error('Failed to download track using spotdl');
-  }
-}
 
 module.exports = {
   config: {
     name: "spotify",
     aliases: ["s"],
-    version: "2.2.0",
+    version: "2.1.0",
     author: "Priyanshi Kaur",
     role: 0,
     countDown: 5,
     shortDescription: {
-      en: "Search and download songs or find artists on Spotify"
+      en: "Search and stream songs or find artists on Spotify"
     },
     longDescription: {
-      en: "Search for songs by name or link on Spotify and download them using spotdl, or search for artists and get their information."
+      en: "Search for songs by name or link on Spotify and stream them, or search for artists and get their information."
     },
     category: "music",
     guide: {
@@ -95,10 +56,10 @@ module.exports = {
       throw new Error("No track found with the given name.");
     }
 
-    return searchRes.data.tracks.items[0];
+    return searchRes.data.tracks.items[0]; // Return the first track
   },
 
-  // Function to search Spotify for an artist (unchanged)
+  // Function to search Spotify for an artist
   searchSpotifyArtist: async function (artistName, token) {
     const searchRes = await axios.get(`https://api.spotify.com/v1/search`, {
       headers: {
@@ -115,10 +76,10 @@ module.exports = {
       throw new Error("No artist found with the given name.");
     }
 
-    return searchRes.data.artists.items[0];
+    return searchRes.data.artists.items[0]; // Return the first artist
   },
 
-  // Function to get artist's top tracks (unchanged)
+  // Function to get artist's top tracks
   getArtistTopTracks: async function (artistId, token) {
     const topTracksRes = await axios.get(`https://api.spotify.com/v1/artists/${artistId}/top-tracks`, {
       headers: {
@@ -129,17 +90,13 @@ module.exports = {
       }
     });
 
-    return topTracksRes.data.tracks.slice(0, 5);
+    return topTracksRes.data.tracks.slice(0, 5); // Return top 5 tracks
   },
 
   onStart: async function ({ api, event, args }) {
     try {
-      // Create cache directory if it doesn't exist
-      const cacheDir = path.join(__dirname, 'cache');
-      await fs.ensureDir(cacheDir);
-
       if (args[0] === "artist") {
-        // Artist search functionality (unchanged)
+        // Artist search
         const artistName = args.slice(1).join(" ").trim();
         if (!artistName) {
           return api.sendMessage("Please provide an artist name.", event.threadID, event.messageID);
@@ -162,7 +119,7 @@ ${topTracks.map((track, index) => `${index + 1}. ${track.name}`).join("\n")}
 
         if (artist.images && artist.images.length > 0) {
           const imageResponse = await axios.get(artist.images[0].url, { responseType: 'arraybuffer' });
-          const imagePath = path.join(cacheDir, `${artist.id}.jpg`);
+          const imagePath = path.join(__dirname, 'cache', `${artist.id}.jpg`);
           await fs.outputFile(imagePath, imageResponse.data);
 
           await api.sendMessage(
@@ -179,53 +136,40 @@ ${topTracks.map((track, index) => `${index + 1}. ${track.name}`).join("\n")}
           await api.sendMessage(artistInfo, event.threadID, event.messageID);
         }
       } else {
-        // Song search and download using spotdl
+        // Song search and stream
         const trackName = args.join(" ").trim();
 
         if (!trackName) {
-          return api.sendMessage(
-            `Please provide a song name or use "artist" to search for an artist.\nFormat: ${this.config.guide.en}`,
-            event.threadID,
-            event.messageID
-          );
+          return api.sendMessage(`Please provide a song name or use "artist" to search for an artist.\nFormat: ${this.config.guide.en}`, event.threadID, event.messageID);
         }
-
-        // Send processing message
-        await api.sendMessage("🎵 Processing your request...", event.threadID, event.messageID);
 
         const spotifyToken = await this.getSpotifyToken();
         const track = await this.searchSpotifyTrack(trackName, spotifyToken);
-        
-        // Download using spotdl
-        const downloadPath = await downloadWithSpotDL(
-          track.external_urls.spotify,
-          cacheDir
-        );
+        const trackUrl = track.external_urls.spotify;
 
-        if (!downloadPath) {
-          throw new Error("Failed to download the track");
+        // Play track using play-dl
+        if (play.is_expired()) {
+          await play.refreshToken(); // Refresh token if expired
         }
 
-        // Send the downloaded song
+        const stream = await play.stream(trackUrl);
+        const songPath = path.join(__dirname, 'cache', `${track.id}.mp3`);
+        await fs.outputFile(songPath, stream.stream);
+
         await api.sendMessage(
           {
-            attachment: fs.createReadStream(downloadPath),
-            body: `🎵 Title: ${track.name}\n👤 Artists: ${track.artists.map(a => a.name).join(", ")}`
+            attachment: fs.createReadStream(songPath),
+            body: `🎵 Title: ${track.name}\n👤 Artists: ${track.artists.map(artist => artist.name).join(", ")}`
           },
           event.threadID,
           event.messageID
         );
 
-        // Clean up downloaded file
-        await fs.remove(downloadPath);
+        await fs.remove(songPath);
       }
     } catch (error) {
       console.error(error);
-      return api.sendMessage(
-        `An error occurred: ${error.message}`,
-        event.threadID,
-        event.messageID
-      );
+      return api.sendMessage(`An error occurred: ${error.message}`, event.threadID, event.messageID);
     }
   }
 };
