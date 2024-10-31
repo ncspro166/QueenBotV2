@@ -6,15 +6,15 @@ module.exports = {
   config: {
     name: "pinterest",
     aliases: ["pin"],
-    version: "1.0.2",
-    author: "JVB || Priyanshi Kaur",
+    version: "1.1.0",
+    author: "Priyanshi Kaur || GPT4o",
     role: 0,
-    countDown: 50,
+    countDown: 25,
     shortDescription: {
       en: "Search for images on Pinterest"
     },
     longDescription: {
-      en: ""
+      en: "Search and download images from Pinterest with customizable number of results"
     },
     category: "image",
     guide: {
@@ -22,49 +22,82 @@ module.exports = {
     }
   },
 
-  onStart: async function ({ api, event, args, usersData }) {
+  onStart: async function ({ api, event, args }) {
     try {
-      const userID = event.senderID;
-
       const keySearch = args.join(" ");
       if (!keySearch.includes("-")) {
-        return api.sendMessage(`Please enter the search query and number of images to return in the format: ${this.config.guide.en}`, event.threadID, event.messageID);
+        return api.sendMessage(
+          `Please enter the search query and number of images to return in the format: ${this.config.guide.en}`, 
+          event.threadID, 
+          event.messageID
+        );
       }
+
+      // Parse search query and number of images
       const keySearchs = keySearch.substr(0, keySearch.indexOf('-')).trim();
       const numberSearch = parseInt(keySearch.split("-").pop().trim()) || 6;
 
-      const res = await axios.get(`https://celestial-dainsleif-v2.onrender.com/pinterest?pinte=${encodeURIComponent(keySearchs)}`);
-      const data = res.data;
+      // Call new API
+      const response = await axios.get(`https://api.kenliejugarap.com/pinterestbymarjhun/?search=${encodeURIComponent(keySearchs)}`);
+      const { status, data, count } = response.data;
 
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        return api.sendMessage(`No image data found for "${keySearchs}". Please try another search query.`, event.threadID, event.messageID);
+      if (!status || !data || data.length === 0) {
+        return api.sendMessage(
+          `No images found for "${keySearchs}". Please try another search query.`,
+          event.threadID,
+          event.messageID
+        );
       }
 
+      // Create cache directory if it doesn't exist
+      const cacheDir = path.join(__dirname, 'cache');
+      await fs.ensureDir(cacheDir);
+
       const imgData = [];
+      const numImages = Math.min(numberSearch, data.length);
 
-      for (let i = 0; i < Math.min(numberSearch, data.length); i++) {
-        const imageUrl = data[i].image;
-
+      // Download and process images
+      for (let i = 0; i < numImages; i++) {
         try {
+          const imageUrl = data[i];
           const imgResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-          const imgPath = path.join(__dirname, 'cache', `${i + 1}.jpg`);
+          const imgPath = path.join(cacheDir, `${i + 1}.jpg`);
           await fs.outputFile(imgPath, imgResponse.data);
           imgData.push(fs.createReadStream(imgPath));
         } catch (error) {
-          console.error(error);
-          // Handle image fetching errors (skip the problematic image)
+          console.error(`Error processing image ${i + 1}:`, error);
+          continue; // Skip failed images
         }
       }
 
-      await api.sendMessage({
-        attachment: imgData,
-        body: `Here are the top ${imgData.length} image results for "${keySearchs}":`
-      }, event.threadID, event.messageID);
+      if (imgData.length === 0) {
+        return api.sendMessage(
+          "Failed to process any images. Please try again.",
+          event.threadID,
+          event.messageID
+        );
+      }
 
-      await fs.remove(path.join(__dirname, 'cache'));
+      // Send images
+      await api.sendMessage(
+        {
+          attachment: imgData,
+          body: `Here are ${imgData.length} images for "${keySearchs}"\nTotal results available: ${count}`
+        },
+        event.threadID,
+        event.messageID
+      );
+
+      // Cleanup cache
+      await fs.remove(cacheDir);
+      
     } catch (error) {
-      console.error(error);
-      return api.sendMessage(`An error occurred. Please try again later.`, event.threadID, event.messageID);
+      console.error("Pinterest command error:", error);
+      return api.sendMessage(
+        "An error occurred while fetching images. Please try again later.",
+        event.threadID,
+        event.messageID
+      );
     }
   }
 };
