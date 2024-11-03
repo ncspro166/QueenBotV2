@@ -3,322 +3,184 @@ const axios = require("axios");
 const path = require("path");
 const { getPrefix } = global.utils;
 const { commands, aliases } = global.GoatBot;
-const doNotDelete = "[ Alpha Testing ]";
-/** 
-* @author NTKhang
-* @author: do not delete it
-* @message if you delete or edit it you will get a global ban
-*/
+const doNotDelete = "[ QueenBotV2 ]";
 
 module.exports = {
-        config: {
-                name: "help",
-                version: "1.18",
-                author: "NTKhang",
-                countDown: 5,
-                role: 0,
-                shortDescription: {
-                        vi: "Xem cách dùng lệnh",
-                        en: "View command usage"
-                },
-                longDescription: {
-                        vi: "Xem cách sử dụng của các lệnh",
-                        en: "View command usage"
-                },
-                category: "box chat",
-                guide: {
-                        vi: "   {pn} [để trống | <số trang> | <tên lệnh>]"
-                                + "\n   {pn} <command name> [-u | usage | -g | guide]: chỉ hiển thị phần hướng dẫn sử dụng lệnh"
-                                + "\n   {pn} <command name> [-i | info]: chỉ hiển thị phần thông tin về lệnh"
-                                + "\n   {pn} <command name> [-r | role]: chỉ hiển thị phần quyền hạn của lệnh"
-                                + "\n   {pn} <command name> [-a | alias]: chỉ hiển thị phần tên viết tắt của lệnh",
-                        en: "{pn} [empty | <page number> | <command name>]"
-                                + "\n   {pn} <command name> [-u | usage | -g | guide]: only show command usage"
-                                + "\n   {pn} <command name> [-i | info]: only show command info"
-                                + "\n   {pn} <command name> [-r | role]: only show command role"
-                                + "\n   {pn} <command name> [-a | alias]: only show command alias"
-                },
-                priority: 1
+    config: {
+        name: "help",
+        version: "2.0",
+        author: "Priyanshi Kaur",
+        countDown: 5,
+        role: 0,
+        shortDescription: {
+            en: "View command information and usage"
         },
-
-        langs: {
-                vi: {
-                        help: "╭─────────────⭓"
-                                + "\n%1"
-                                + "\n├─────⭔"
-                                + "\n│ Trang [ %2/%3 ]"
-                                + "\n│ Hiện tại bot có %4 lệnh có thể sử dụng"
-                                + "\n│ » Gõ %5help <số trang> để xem danh sách các lệnh"
-                                + "\n│ » Gõ %5help để xem chi tiết cách sử dụng lệnh đó"
-                                + "\n├────────⭔"
-                                + "\n│ %6"
-                                + "\n╰─────────────⭓",
-                        help2: "%1├───────⭔"
-                                + "\n│ » Hiện tại bot có %2 lệnh có thể sử dụng"
-                                + "\n│ » Gõ %3help <tên lệnh> để xem chi tiết cách sử dụng lệnh đó"
-                                + "\n│ %4"
-                                + "\n╰─────────────⭓",
-                        commandNotFound: "Lệnh \"%1\" không tồn tại",
-                        getInfoCommand: "╭── NAME ────⭓"
-                                + "\n│ %1"
-                                + "\n├── INFO"
-                                + "\n│ Mô tả: %2"
-                                + "\n│ Các tên gọi khác: %3"
-                                + "\n│ Các tên gọi khác trong nhóm bạn: %4"
-                                + "\n│ Version: %5"
-                                + "\n│ Role: %6"
-                                + "\n│ Thời gian mỗi lần dùng lệnh: %7s"
-                                + "\n│ Author: %8"
-                                + "\n├── USAGE"
-                                + "\n│%9"
-                                + "\n├── NOTES"
-                                + "\n│ Nội dung bên trong <XXXXX> là có thể thay đổi"
-                                + "\n│ Nội dung bên trong [a|b|c] là a hoặc b hoặc c"
-                                + "\n╰──────⭔",
-                        onlyInfo: "╭── INFO ────⭓"
-                                + "\n│ Tên lệnh: %1"
-                                + "\n│ Mô tả: %2"
-                                + "\n│ Các tên gọi khác: %3"
-                                + "\n│ Các tên gọi khác trong nhóm bạn: %4"
-                                + "\n│ Version: %5"
-                                + "\n│ Role: %6"
-                                + "\n│ Thời gian mỗi lần dùng lệnh: %7s"
-                                + "\n│ Author: %8"
-                                + "\n╰─────────────⭓",
-                        onlyUsage: "╭── USAGE ────⭓"
-                                + "\n│%1"
-                                + "\n╰─────────────⭓",
-                        onlyAlias: "╭── ALIAS ────⭓"
-                                + "\n│ Các tên gọi khác: %1"
-                                + "\n│ Các tên gọi khác trong nhóm bạn: %2"
-                                + "\n╰─────────────⭓",
-                        onlyRole: "╭── ROLE ────⭓"
-                                + "\n│%1"
-                                + "\n╰─────────────⭓",
-                        doNotHave: "Không có",
-                        roleText0: "0 (Tất cả người dùng)",
-                        roleText1: "1 (Quản trị viên nhóm)",
-                        roleText2: "2 (Admin bot)",
-                        roleText0setRole: "0 (set role, tất cả người dùng)",
-                        roleText1setRole: "1 (set role, quản trị viên nhóm)",
-                        pageNotFound: "Trang %1 không tồn tại"
-                },
-                en: {
-                        help: "╭─────────────⭓"
-                                + "\n%1"
-                                + "\n├─────⭔"
-                                + "\n│ Page [ %2/%3 ]"
-                                + "\n│ Currently, the bot has %4 commands that can be used"
-                                + "\n│ » Type %5help <page> to view the command list"
-                                + "\n│ » Type %5help to view the details of how to use that command"
-                                + "\n├────────⭔"
-                                + "\n│ %6"
-                                + "\n╰─────────────⭓",
-                        help2: "%1├───────⭔"
-                                + "\n│ » Currently, the bot has %2 commands that can be used"
-                                + "\n│ » Type %3help <command name> to view the details of how to use that command"
-                                + "\n│ %4"
-                                + "\n╰─────────────⭓",
-                        commandNotFound: "Command \"%1\" does not exist",
-                        getInfoCommand: "╭── NAME ────⭓"
-                                + "\n│ %1"
-                                + "\n├── INFO"
-                                + "\n│ Description: %2"
-                                + "\n│ Other names: %3"
-                                + "\n│ Other names in your group: %4"
-                                + "\n│ Version: %5"
-                                + "\n│ Role: %6"
-                                + "\n│ Time per command: %7s"
-                                + "\n│ Author: %8"
-                                + "\n├── USAGE"
-                                + "\n│%9"
-                                + "\n├── NOTES"
-                                + "\n│ The content inside <XXXXX> can be changed"
-                                + "\n│ The content inside [a|b|c] is a or b or c"
-                                + "\n╰──────⭔",
-                        onlyInfo: "╭── INFO ────⭓"
-                                + "\n│ Command name: %1"
-                                + "\n│ Description: %2"
-                                + "\n│ Other names: %3"
-                                + "\n│ Other names in your group: %4"
-                                + "\n│ Version: %5"
-                                + "\n│ Role: %6"
-                                + "\n│ Time per command: %7s"
-                                + "\n│ Author: %8"
-                                + "\n╰─────────────⭓",
-                        onlyUsage: "╭── USAGE ────⭓"
-                                + "\n│%1"
-                                + "\n╰─────────────⭓",
-                        onlyAlias: "╭── ALIAS ────⭓"
-                                + "\n│ Other names: %1"
-                                + "\n│ Other names in your group: %2"
-                                + "\n╰─────────────⭓",
-                        onlyRole: "╭── ROLE ────⭓"
-                                + "\n│%1"
-                                + "\n╰─────────────⭓",
-                        doNotHave: "Do not have",
-                        roleText0: "0 (All users)",
-                        roleText1: "1 (Group administrators)",
-                        roleText2: "2 (Admin bot)",
-                        roleText0setRole: "0 (set role, all users)",
-                        roleText1setRole: "1 (set role, group administrators)",
-                        pageNotFound: "Page %1 does not exist"
-                }
+        longDescription: {
+            en: "Display detailed information about commands, including usage, categories, and permissions"
         },
+        category: "system",
+        guide: {
+            en: "{pn} [blank | <page> | <command>]"
+                + "\n• {pn} [-all]: Show all commands"
+                + "\n• {pn} [-c | category]: List commands by category"
+                + "\n• {pn} <command> [-i | info]: Show command info"
+                + "\n• {pn} <command> [-u | usage]: Show command usage"
+                + "\n• {pn} <command> [-p | perms]: Show command permissions"
+                + "\n• {pn} <command> [-e | examples]: Show command examples"
+                + "\n• {pn} [-s | search] <keyword>: Search commands"
+        },
+        priority: 1
+    },
 
-        onStart: async function ({ message, args, event, threadsData, getLang, role }) {
-                const langCode = await threadsData.get(event.threadID, "data.lang") || global.GoatBot.config.language;
-                let customLang = {};
-                const pathCustomLang = path.normalize(`${process.cwd()}/languages/cmds/${langCode}.js`);
-                if (fs.existsSync(pathCustomLang))
-                        customLang = require(pathCustomLang);
+    langs: {
+        en: {
+            menuHeader: "╭─────────────⭓\n│ 🤖 BOT COMMANDS\n├─────────────⭔",
+            menuBody: "│ %1. %2\n",
+            menuFooter: "├─────────────⭔\n│ Page %1/%2 • %3 commands\n│ Use %4help <page>\n╰─────────────⭓",
+            
+            categoryHeader: "╭─────────────⭓\n│ 📑 CATEGORY: %1\n├─────────────⭔",
+            categoryBody: "│ %1\n",
+            categoryFooter: "├─────────────⭔\n│ %1 commands in category\n╰─────────────⭓",
+            
+            commandInfo: "╭── COMMAND INFO ────⭓"
+                + "\n│ 📝 Name: %1"
+                + "\n│ 📚 Description: %2" 
+                + "\n│ 🔧 Version: %3"
+                + "\n│ 👑 Role: %4"
+                + "\n│ ⏰ Cooldown: %5s"
+                + "\n│ ✍️ Author: %6"
+                + "\n├── USAGE ────⭔"
+                + "\n%7"
+                + "\n╰──────────⭓",
+                
+            searchResults: "╭── SEARCH RESULTS ────⭓"
+                + "\n│ 🔎 Found %1 commands:"
+                + "\n│ %2"
+                + "\n╰──────────⭓",
+                
+            noResults: "❌ No commands found matching '%1'",
+            invalidPage: "❌ Invalid page number %1",
+            invalidCommand: "❌ Command '%1' not found",
+            noPermission: "⚠️ You don't have permission to use this command"
+        }
+    },
 
-                const { threadID } = event;
-                const threadData = await threadsData.get(threadID);
-                const prefix = getPrefix(threadID);
-                let sortHelp = threadData.settings.sortHelp || "name";
-                if (!["category", "name"].includes(sortHelp))
-                        sortHelp = "name";
-                const commandName = (args[0] || "").toLowerCase();
-                const command = commands.get(commandName) || commands.get(aliases.get(commandName));
+    onStart: async function ({ message, args, event, threadsData, getLang, role }) {
+        const prefix = getPrefix(event.threadID);
+        const threadData = await threadsData.get(event.threadID);
+        
+        // Helper function to format command list
+        const formatCommands = (cmds) => {
+            return cmds
+                .filter(cmd => cmd.config.role <= role)
+                .map(cmd => {
+                    const desc = cmd.config.shortDescription?.en || '';
+                    return `${cmd.config.name}: ${desc}`;
+                });
+        };
 
-                // ———————————————— LIST ALL COMMAND ——————————————— //
-                if (!command && !args[0] || !isNaN(args[0])) {
-                        const arrayInfo = [];
-                        let msg = "";
-                        if (sortHelp == "name") {
-                                const page = parseInt(args[0]) || 1;
-                                const numberOfOnePage = 30;
-                                for (const [name, value] of commands) {
-                                        if (value.config.role > 1 && role < value.config.role)
-                                                continue;
-                                        let describe = name;
-                                        let shortDescription;
-                                        const shortDescriptionCustomLang = customLang[name]?.shortDescription;
-                                        if (shortDescriptionCustomLang != undefined)
-                                                shortDescription = checkLangObject(shortDescriptionCustomLang, langCode);
-                                        else if (value.config.shortDescription)
-                                                shortDescription = checkLangObject(value.config.shortDescription, langCode);
-                                        if (shortDescription)
-                                                describe += `: ${cropContent(shortDescription.charAt(0).toUpperCase() + shortDescription.slice(1))}`;
-                                        arrayInfo.push({
-                                                data: describe,
-                                                priority: value.priority || 0
-                                        });
-                                }
+        // Handle different command arguments
+        if (!args.length || !isNaN(args[0])) {
+            // Show paginated command list
+            const page = parseInt(args[0]) || 1;
+            const commandsPerPage = 10;
+            const validCommands = Array.from(commands.values())
+                .filter(cmd => cmd.config.role <= role);
+                
+            const totalPages = Math.ceil(validCommands.length / commandsPerPage);
+            
+            if (page < 1 || page > totalPages)
+                return message.reply(getLang("invalidPage", page));
+                
+            const startIdx = (page - 1) * commandsPerPage;
+            const pageCommands = validCommands.slice(startIdx, startIdx + commandsPerPage);
+            
+            let msg = getLang("menuHeader");
+            pageCommands.forEach((cmd, idx) => {
+                msg += getLang("menuBody", startIdx + idx + 1, 
+                    `${cmd.config.name}: ${cmd.config.shortDescription?.en || ''}`);
+            });
+            msg += getLang("menuFooter", page, totalPages, validCommands.length, prefix);
+            
+            return message.reply(msg);
+        }
 
-                                arrayInfo.sort((a, b) => a.data - b.data); // sort by name
-                                arrayInfo.sort((a, b) => a.priority > b.priority ? -1 : 1); // sort by priority
-                                const { allPage, totalPage } = global.utils.splitPage(arrayInfo, numberOfOnePage);
-                                if (page < 1 || page > totalPage)
-                                        return message.reply(getLang("pageNotFound", page));
-
-                                const returnArray = allPage[page - 1] || [];
-                                const startNumber = (page - 1) * numberOfOnePage + 1;
-                                msg += (returnArray || []).reduce((text, item, index) => text += `│ ${index + startNumber}${index + startNumber < 10 ? " " : ""}. ${item.data}\n`, '').slice(0, -1);
-                                await message.reply(getLang("help", msg, page, totalPage, commands.size, prefix, doNotDelete));
-                        }
-                        else if (sortHelp == "category") {
-                                for (const [, value] of commands) {
-                                        if (value.config.role > 1 && role < value.config.role)
-                                                continue; // if role of command > role of user => skip
-                                        const indexCategory = arrayInfo.findIndex(item => (item.category || "NO CATEGORY") == (value.config.category?.toLowerCase() || "NO CATEGORY"));
-
-                                        if (indexCategory != -1)
-                                                arrayInfo[indexCategory].names.push(value.config.name);
-                                        else
-                                                arrayInfo.push({
-                                                        category: value.config.category.toLowerCase(),
-                                                        names: [value.config.name]
-                                                });
-                                }
-                                arrayInfo.sort((a, b) => (a.category < b.category ? -1 : 1));
-                                arrayInfo.forEach((data, index) => {
-                                        const categoryUpcase = `${index == 0 ? `╭` : `├`}─── ${data.category.toUpperCase()} ${index == 0 ? "⭓" : "⭔"}`;
-                                        data.names = data.names.sort().map(item => item = `│ ${item}`);
-                                        msg += `${categoryUpcase}\n${data.names.join("\n")}\n`;
-                                });
-                                message.reply(getLang("help2", msg, commands.size, prefix, doNotDelete));
-                        }
+        if (args[0] === '-c' || args[0] === 'category') {
+            // List commands by category
+            const categories = new Map();
+            for (const [, cmd] of commands) {
+                if (cmd.config.role <= role) {
+                    const category = cmd.config.category || 'Uncategorized';
+                    if (!categories.has(category)) {
+                        categories.set(category, []);
+                    }
+                    categories.get(category).push(cmd.config.name);
                 }
-                // ———————————— COMMAND DOES NOT EXIST ———————————— //
-                else if (!command && args[0]) {
-                        return message.reply(getLang("commandNotFound", args[0]));
-                }
-                // ————————————————— INFO COMMAND ————————————————— //
-                else {
-                        const formSendMessage = {};
-                        const configCommand = command.config;
+            }
 
-                        let guide = configCommand.guide?.[langCode] || configCommand.guide?.["en"];
-                        if (guide == undefined)
-                                guide = customLang[configCommand.name]?.guide?.[langCode] || customLang[configCommand.name]?.guide?.["en"];
+            let msg = '';
+            for (const [category, cmds] of categories) {
+                msg += getLang("categoryHeader", category.toUpperCase());
+                msg += getLang("categoryBody", cmds.join(', '));
+                msg += getLang("categoryFooter", cmds.length);
+            }
+            
+            return message.reply(msg);
+        }
 
-                        guide = guide || {
-                                body: ""
-                        };
-                        if (typeof guide == "string")
-                                guide = { body: guide };
-                        const guideBody = guide.body
-                                .replace(/\{prefix\}|\{p\}/g, prefix)
-                                .replace(/\{name\}|\{n\}/g, configCommand.name)
-                                .replace(/\{pn\}/g, prefix + configCommand.name);
+        if (args[0] === '-s' || args[0] === 'search') {
+            // Search commands
+            const query = args.slice(1).join(' ').toLowerCase();
+            const matches = Array.from(commands.values())
+                .filter(cmd => 
+                    cmd.config.role <= role && 
+                    (cmd.config.name.toLowerCase().includes(query) ||
+                     cmd.config.shortDescription?.en.toLowerCase().includes(query))
+                );
+                
+            if (!matches.length)
+                return message.reply(getLang("noResults", query));
+                
+            const results = matches.map(cmd => 
+                `${cmd.config.name}: ${cmd.config.shortDescription?.en || ''}`
+            );
+            
+            return message.reply(getLang("searchResults", 
+                matches.length,
+                results.join('\n│ ')
+            ));
+        }
 
-                        const aliasesString = configCommand.aliases ? configCommand.aliases.join(", ") : getLang("doNotHave");
-                        const aliasesThisGroup = threadData.data.aliases ? (threadData.data.aliases[configCommand.name] || []).join(", ") : getLang("doNotHave");
+        // Show command info
+        const commandName = args[0].toLowerCase();
+        const command = commands.get(commandName) || commands.get(aliases.get(commandName));
+        
+        if (!command)
+            return message.reply(getLang("invalidCommand", commandName));
+            
+        if (command.config.role > role)
+            return message.reply(getLang("noPermission"));
 
-                        let roleOfCommand = configCommand.role;
-                        let roleIsSet = false;
-                        if (threadData.data.setRole?.[configCommand.name]) {
-                                roleOfCommand = threadData.data.setRole[configCommand.name];
-                                roleIsSet = true;
-                        }
+        let msg = getLang("commandInfo",
+            command.config.name,
+            command.config.longDescription?.en || command.config.shortDescription?.en || 'No description',
+            command.config.version || '1.0',
+            command.config.role,
+            command.config.cooldown || 3,
+            command.config.author || 'Unknown',
+            command.config.guide?.en || 'No usage guide'
+        );
 
-                        const roleText = roleOfCommand == 0 ?
-                                (roleIsSet ? getLang("roleText0setRole") : getLang("roleText0")) :
-                                roleOfCommand == 1 ?
-                                        (roleIsSet ? getLang("roleText1setRole") : getLang("roleText1")) :
-                                        getLang("roleText2");
+        if (args[1] === '-u' || args[1] === 'usage') {
+            msg = `╭── USAGE ────⭓\n${command.config.guide?.en || 'No usage guide'}\n╰──────────⭓`;
+        }
+        else if (args[1] === '-p' || args[1] === 'perms') {
+            msg = `╭── PERMISSIONS ────⭓\n│ Required Role: ${command.config.role}\n╰──────────⭓`;
+        }
+        else if (args[1] === '-e' || args[1] === 'examples') {
+            msg = `╭── EXAMPLES ────⭓\n${command.config.examples?.en || 'No examples available'}\n╰──────────⭓`;
+        }
 
-                        const author = configCommand.author;
-                        const descriptionCustomLang = customLang[configCommand.name]?.longDescription;
-                        let description = checkLangObject(configCommand.longDescription, langCode);
-                        if (description == undefined)
-                                if (descriptionCustomLang != undefined)
-                                        description = checkLangObject(descriptionCustomLang, langCode);
-                                else
-                                        description = getLang("doNotHave");
-
-                        let sendWithAttachment = false; // check subcommand need send with attachment or not
-
-                        if (args[1]?.match(/^-g|guide|-u|usage$/)) {
-                                formSendMessage.body = getLang("onlyUsage", guideBody.split("\n").join("\n│"));
-                                sendWithAttachment = true;
-                        }
-                        else if (args[1]?.match(/^-a|alias|aliase|aliases$/))
-                                formSendMessage.body = getLang("onlyAlias", aliasesString, aliasesThisGroup);
-                        else if (args[1]?.match(/^-r|role$/))
-                                formSendMessage.body = getLang("onlyRole", roleText);
-                        else if (args[1]?.match(/^-i|info$/))
-                                formSendMessage.body = getLang("onlyInfo", configCommand.name, description, aliasesString, aliasesThisGroup, configCommand.version, roleText, configCommand.countDown || 1, author || "");
-                        else {
-                                formSendMessage.body = getLang("getInfoCommand", configCommand.name, description, aliasesString, aliasesThisGroup, configCommand.version, roleText, configCommand.countDown || 1, author || "", `${guideBody.split("\n").join("\n│")}`);
-                                sendWithAttachment = true;
-                        }
-
-                        if (sendWithAttachment && guide.attachment) {
-                                if (typeof guide.attachment == "object" && !Array.isArray(guide.attachment)) {
-                                        const promises = [];
-                                        formSendMessage.attachment = [];
-
-                                        for (const keyPathFile in guide.attachment) {
-                                                const pathFile = path.normalize(keyPathFile);
-
-                                                if (!fs.existsSync(pathFile)) {
-                                                        const cutDirPath = path.dirname(pathFile).split(path.sep);
-                                                        for (let i = 0; i < cutDirPath.length; i++) {
-                                                                const pathCheck = `${cutDirPath.slice(0, i + 1).join(path.sep)}${path.sep}`; // create path
-                                                                if (!fs.existsSync(pathCheck))
-                                                                        fs.mkdirSync(pathCheck); // create folder
-                                                        }
-                                                       
+        return message.reply(msg);
+    }
+};
