@@ -38,7 +38,7 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: "priyanshika-queen-36"
-          entrypoint: "jsr:@deno/nextjs-start"
+          entrypoint: "node index.js"
           root: "."
-          include: .next, public
+          
           
