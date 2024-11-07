@@ -26,9 +26,9 @@ const MediaProcessor = {
     async extractFramesFromVideo(videoPath, outputDir) {
         const frameCount = 5;
         const frames = [];
-        
+
         await promisify(ffmpeg.ffprobe)(videoPath);
-        
+
         for (let i = 0; i < frameCount; i++) {
             const outputPath = path.join(outputDir, `frame_${i}.jpg`);
             await new Promise((resolve, reject) => {
@@ -69,26 +69,27 @@ const MediaProcessor = {
     },
 
     async processVideo(videoPath) {
-        const tempDir = path.join(__dirname, 'temp', Date.now().toString());
-        await fs.promises.mkdir(tempDir, { recursive: true });
+        const tempDir = await createTempDirectory();
         const frames = await this.extractFramesFromVideo(videoPath, tempDir);
-        
+
         const processedFrames = await Promise.all(
             frames.map(frame => this.processImage(frame))
         );
 
-        await fs.promises.rm(tempDir, { recursive: true });
+        await fs.promises.rm(tempDir, { recursive: true }).catch(() => {});
         return processedFrames;
     }
 };
 
 const ChatManager = {
-    getHistoryPath(uid) {
-        return path.join(__dirname, 'data', `${uid}_chat_history.json`);
+    async getHistoryPath(uid) {
+        const basePath = path.join(process.cwd(), 'cache', 'gemini');
+        await fs.promises.mkdir(basePath, { recursive: true });
+        return path.join(basePath, `${uid}_chat_history.json`);
     },
 
     async loadHistory(uid) {
-        const historyPath = this.getHistoryPath(uid);
+        const historyPath = await this.getHistoryPath(uid);
         try {
             if (fs.existsSync(historyPath)) {
                 const data = await fs.promises.readFile(historyPath, 'utf8');
@@ -101,36 +102,39 @@ const ChatManager = {
     },
 
     async saveHistory(uid, history) {
-        const historyPath = this.getHistoryPath(uid);
-        const dirPath = path.dirname(historyPath);
-        
-        await fs.promises.mkdir(dirPath, { recursive: true });
+        const historyPath = await this.getHistoryPath(uid);
         await fs.promises.writeFile(historyPath, JSON.stringify(history, null, 2));
     },
 
     async clearHistory(uid) {
-        const historyPath = this.getHistoryPath(uid);
+        const historyPath = await this.getHistoryPath(uid);
         if (fs.existsSync(historyPath)) {
             await fs.promises.unlink(historyPath);
         }
     }
 };
 
+async function createTempDirectory() {
+    const tempDir = path.join(process.cwd(), 'cache', 'gemini', 'temp', Date.now().toString());
+    await fs.promises.mkdir(tempDir, { recursive: true });
+    return tempDir;
+}
+
 async function uploadMediaToGemini(genaiService, auth, mediaData) {
     const bufferStream = new stream.PassThrough();
     bufferStream.end(Buffer.from(mediaData, 'base64'));
-    
+
     const media = {
         mimeType: 'image/jpeg',
         body: bufferStream
     };
-    
+
     const response = await genaiService.media.upload({
         media,
         auth,
         requestBody: { file: { displayName: 'Uploaded Media' } }
     });
-    
+
     return { file_uri: response.data.file.uri, mime_type: response.data.file.mimeType };
 }
 
@@ -138,14 +142,14 @@ async function generateResponse(uid, prompt, mediaFiles = []) {
     const startTime = Date.now();
     const genaiService = await google.discoverAPI({ url: GENAI_DISCOVERY_URL });
     const auth = new google.auth.GoogleAuth().fromAPIKey(API_KEY);
-    
+
     const history = await ChatManager.loadHistory(uid);
     const conversationContext = history
         .map(msg => `${msg.role}: ${msg.content}`)
         .join('\n');
-    
+
     const fullPrompt = `${conversationContext}\n\nUser: ${prompt}`;
-    
+
     const mediaDataParts = [];
     if (mediaFiles.length > 0) {
         for (const file of mediaFiles) {
@@ -191,7 +195,7 @@ async function generateResponse(uid, prompt, mediaFiles = []) {
     });
 
     const generatedText = response.data.candidates[0].content.parts[0].text;
-    
+
     history.push({ role: 'user', content: prompt });
     history.push({ role: 'assistant', content: generatedText });
     await ChatManager.saveHistory(uid, history);
@@ -200,6 +204,29 @@ async function generateResponse(uid, prompt, mediaFiles = []) {
     wordCount = generatedText.split(/\s+/).length;
 
     return generatedText;
+}
+
+async function downloadFile(url, filePath) {
+    const response = await fetch(url);
+    const buffer = await response.buffer();
+    await fs.promises.writeFile(filePath, buffer);
+    return filePath;
+}
+
+async function processMediaWithProgress(mediaFiles, updateCallback) {
+    const results = [];
+    for (let i = 0; i < mediaFiles.length; i++) {
+        const file = mediaFiles[i];
+        await updateCallback(i + 1, mediaFiles.length);
+        const processed = await MediaProcessor.processMedia(file);
+        results.push(processed);
+    }
+    return results;
+}
+
+function formatStatusMessage(status, current, total, additionalInfo = "") {
+    const progressBar = total ? ` (${current}/${total})` : "";
+    return `🤖 ${status}${progressBar}${additionalInfo ? "\n" + additionalInfo : ""}`;
 }
 
 module.exports = {
@@ -246,44 +273,33 @@ Advanced Gemini AI Command Usage:
             `.trim());
         }
 
-        const processingMessage = await message.reply({
-            body: "🤖 Initializing Gemini...",
-            attachment: null
-        });
+        const processingMessage = await message.reply("🤖 Processing your request...");
 
         try {
             let mediaFiles = [];
-            
-            if (event.type === "message_reply" && event.messageReply.attachments?.length > 0) {
-                await api.editMessage(
-                    `🤖 Processing media files (0/${event.messageReply.attachments.length})...`,
-                    processingMessage.messageID
-                );
 
-                const attachments = event.messageReply.attachments;
+            if (event.type === "message_reply" && event.messageReply.attachments?.length > 0) {
+                const tempDir = await createTempDirectory();
                 
-                for (let i = 0; i < attachments.length; i++) {
-                    const attachment = attachments[i];
-                    const tempPath = path.join(__dirname, 'temp', `${Date.now()}_${attachment.filename}`);
-                    
+                for (const attachment of event.messageReply.attachments) {
+                    const tempPath = path.join(tempDir, `${Date.now()}_${attachment.filename || 'media'}`);
                     await downloadFile(attachment.url, tempPath);
                     mediaFiles.push(tempPath);
-
-                    await api.editMessage(
-                        `🤖 Processing media files (${i + 1}/${attachments.length})...`,
-                        processingMessage.messageID
-                    );
                 }
             }
 
-            await api.editMessage(
-                "🤖 Generating response with Gemini...",
-                processingMessage.messageID
-            );
-
             const response = await generateResponse(uid, prompt, mediaFiles);
             const replyMessage = `${response}\n\n⏱️ Time: ${totalTimeInSeconds.toFixed(2)}s | 📝 Words: ${wordCount}`;
-            await api.editMessage(replyMessage, processingMessage.messageID);
+            
+            await message.reply(replyMessage, (err, info) => {
+                if (!err) {
+                    global.GoatBot.onReply.set(info.messageID, {
+                        commandName: "g",
+                        messageID: info.messageID,
+                        author: event.senderID
+                    });
+                }
+            });
 
             mediaFiles.forEach(file => {
                 if (fs.existsSync(file)) {
@@ -292,33 +308,54 @@ Advanced Gemini AI Command Usage:
             });
 
         } catch (error) {
-            await api.editMessage(
-                `❌ Error: ${error.message}`,
-                processingMessage.messageID
-            );
+            message.reply(`❌ Error: ${error.message}`);
+        }
+    },
+
+    onReply: async function ({ api, message, event, Reply }) {
+        const { author, commandName } = Reply;
+        
+        if (event.senderID !== author) return;
+        
+        const uid = event.senderID;
+        const prompt = event.body;
+
+        if (!prompt) return;
+
+        try {
+            let mediaFiles = [];
+
+            if (event.attachments?.length > 0) {
+                const tempDir = await createTempDirectory();
+                
+                for (const attachment of event.attachments) {
+                    const tempPath = path.join(tempDir, `${Date.now()}_${attachment.filename || 'media'}`);
+                    await downloadFile(attachment.url, tempPath);
+                    mediaFiles.push(tempPath);
+                }
+            }
+
+            const response = await generateResponse(uid, prompt, mediaFiles);
+            const replyMessage = `${response}\n\n⏱️ Time: ${totalTimeInSeconds.toFixed(2)}s | 📝 Words: ${wordCount}`;
+            
+            await message.reply(replyMessage, (err, info) => {
+                if (!err) {
+                    global.GoatBot.onReply.set(info.messageID, {
+                        commandName,
+                        messageID: info.messageID,
+                        author: event.senderID
+                    });
+                }
+            });
+
+            mediaFiles.forEach(file => {
+                if (fs.existsSync(file)) {
+                    fs.unlinkSync(file);
+                }
+            });
+
+        } catch (error) {
+            message.reply(`❌ Error: ${error.message}`);
         }
     }
 };
-
-async function downloadFile(url, path) {
-    const response = await fetch(url);
-    const buffer = await response.buffer();
-    await fs.promises.writeFile(path, buffer);
-    return path;
-}
-
-async function processMediaWithProgress(mediaFiles, updateCallback) {
-    const results = [];
-    for (let i = 0; i < mediaFiles.length; i++) {
-        const file = mediaFiles[i];
-        await updateCallback(i + 1, mediaFiles.length);
-        const processed = await MediaProcessor.processMedia(file);
-        results.push(processed);
-    }
-    return results;
-}
-
-function formatStatusMessage(status, current, total, additionalInfo = "") {
-    const progressBar = total ? ` (${current}/${total})` : "";
-    return `🤖 ${status}${progressBar}${additionalInfo ? "\n" + additionalInfo : ""}`;
-}
