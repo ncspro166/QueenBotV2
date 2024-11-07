@@ -1,99 +1,131 @@
-const axios = require("axios");
-const fs = require("fs");
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
     config: {
-        name: 'download',
-        version: '1.3',
+        name: 'autolink',
+        version: '1.5.0',
         author: 'Priyanshi Kaur',
         countDown: 5,
         role: 0,
-        shortDescription: 'Auto video downloader for multiple platforms',
-        longDescription: 'Automatically downloads videos from various platforms when links are shared in the group',
+        description: 'Auto video downloader for Instagram, Facebook, TikTok, Twitter and Youtube, etc.',
         category: 'media',
         guide: {
-            en: '{p}autolink [on/off]'
+            en: "{pn} -> Check autolink status\n{pn} [on | off] -> Turn autolink on or off"
+        },
+    },
+
+    onStart: async function ({ event, message, args, prefix }) {
+        const threadID = event.threadID;
+        const autolinkFile = 'autolink.json';
+        let autolinkData = {};
+
+        if (fs.existsSync(autolinkFile)) {
+            autolinkData = JSON.parse(fs.readFileSync(autolinkFile, 'utf8'));
+        }
+
+        if (!autolinkData[threadID]) {
+            autolinkData[threadID] = false;
+            fs.writeFileSync(autolinkFile, JSON.stringify(autolinkData, null, 2));
+        }
+
+        if (!args[0]) {
+            return message.reply(autolinkData[threadID] 
+                ? "✅ Autolink is enabled. Use autolink off to disable." 
+                : "❌ Autolink is disabled. Use autolink on to enable.");
+        }
+
+        if (args[0].toLowerCase() === "on") {
+            autolinkData[threadID] = true;
+            fs.writeFileSync(autolinkFile, JSON.stringify(autolinkData, null, 2));
+            return message.reply("✅ Autolink has been turned on.");
+        } else if (args[0].toLowerCase() === "off") {
+            autolinkData[threadID] = false;
+            fs.writeFileSync(autolinkFile, JSON.stringify(autolinkData, null, 2));
+            return message.reply("❌ Autolink has been turned off.");
         }
     },
 
-    onStart: async function ({ api, event, args }) {
-        const threadID = event.threadID;
-        const command = args[0]?.toLowerCase();
+    onChat: async function ({ message, event, api }) {
+        const autolinkData = JSON.parse(fs.readFileSync('autolink.json', 'utf8'));
+        if (!autolinkData[event.threadID]) return;
 
-        if (command === 'on' || command === 'off') {
-            this.setAutoLinkState(threadID, command);
-            api.sendMessage(`✅ AutoLink is now turned ${command} for this chat.`, threadID);
-        } else {
-            api.sendMessage("❓ Usage: {p}autolink [on/off]", threadID);
+        let url = event.body || "";
+        if (event.type === "message_reply") {
+            url = event.messageReply.body || "";
         }
-    },
 
-    onChat: async function ({ api, event }) {
-        const threadID = event.threadID;
-        if (!this.getAutoLinkState(threadID)) return;
+        const extractUrl = (text) => {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const matches = text.match(urlRegex);
+            return matches ? matches[0] : null;
+        };
 
-        const url = this.checkLink(event.body)?.url;
-        if (!url) return;
-        
-        const apikey = "r-e377e74a78b7363636jsj8ffb61ce";
-        
-        try {
-            const response = await axios.get(`https://for-devs.onrender.com/api/snapsave?url=${url}&apikey=${apikey}`);
-            const videoUrl = response.data.data.medias[0].url;
-            if (!videoUrl) throw new Error("No video URL found");
+        const isValidDomain = (url) => {
+            const domains = ["instagram.com", "facebook.com", "fb.watch", "tiktok.com", "twitter.com", "x.com", "youtube.com", "youtu.be"];
+            return domains.some(domain => url.includes(domain));
+        };
 
-            const stream = await global.utils.getStreamFromURL(videoUrl);
-            await api.sendMessage(
-                { body: "Here Is Your Requested 🎥", attachment: stream },
-                event.threadID
-            );
-        } catch (err) {
-            console.error("Error downloading video:", err);
-            let errorMessage = `❌ Error when trying to download the video: ${err.message}`;
-            if (err.response) {
-                errorMessage += `\nStatus: ${err.response.status}\nData: ${JSON.stringify(err.response.data)}`;
+        const processVideo = async (videoURL) => {
+            try {
+                api.setMessageReaction("⏳", event.messageID, () => {}, true);
+                
+                const response = await axios.get('https://alldl-team-clayx.onrender.com/download', {
+                    params: { url: videoURL }
+                });
+
+                if (!response.data.download_url) throw new Error("No download URL received");
+
+                const videoUrl = `https://alldl-team-clayx.onrender.com/${response.data.download_url}`;
+                const videoPath = path.join(__dirname, `temp_${Date.now()}.mp4`);
+                
+                const videoResponse = await axios({
+                    url: videoUrl,
+                    method: 'GET',
+                    responseType: 'stream'
+                });
+
+                const writer = fs.createWriteStream(videoPath);
+                videoResponse.data.pipe(writer);
+
+                return new Promise((resolve, reject) => {
+                    writer.on('finish', async () => {
+                        try {
+                            await message.reply({
+                                body: "Downloaded video:",
+                                attachment: fs.createReadStream(videoPath)
+                            });
+                            fs.unlinkSync(videoPath);
+                            api.setMessageReaction("✅", event.messageID, () => {}, true);
+                            resolve();
+                        } catch (err) {
+                            reject(err);
+                        }
+                    });
+
+                    writer.on('error', reject);
+                });
+            } catch (error) {
+                api.setMessageReaction("❌", event.messageID, () => {}, true);
+                throw error;
             }
-            api.sendMessage(errorMessage, event.threadID, event.messageID);
+        };
+
+        if (event.type === "share") {
+            const attachments = event.attachments;
+            if (attachments && attachments[0] && attachments[0].type === "share") {
+                url = attachments[0].url;
+            }
         }
-    },
 
-    checkLink: function (text) {
-        const supportedDomains = [
-            '9gag', 'akilitv', 'bandcamp', 'bilibili', 'bitchute', 'blogger', 'blutv',
-            'buzzfeed', 'capcut', 'chingari', 'dailymotion', 'douyin', 'espn', 'facebook',
-            'febspot', 'flickr', 'ifunny', 'imdb', 'imgur', 'instagram', 'izlesene', 'kwai',
-            'lemon8', 'likee', 'linkedin', 'loom', 'mashable', 'mastodon', 'medal', 'mixcloud',
-            'moj', 'mxtakatak', 'ok.ru', 'pinterest', 'puhutv', 'reddit', 'rumble', 'sharechat',
-            'snapchat', 'soundcloud', 'streamable', 'substack', 'ted', 'telegram', 'threads',
-            'tiktok', 'tumblr', 'twitch', 'vimeo', 'vk', 'youtube', 'x'
-        ];
+        const extractedUrl = extractUrl(url);
+        if (!extractedUrl || !isValidDomain(extractedUrl)) return;
 
-        const urlRegex = new RegExp(`https?:\/\/(?:www\.)?(?:${supportedDomains.join('|')})\\.[a-z]{2,6}(?:[/?#][^\\s]*)?`, 'i');
-        const match = text.match(urlRegex);
-        return match ? { url: match[0] } : false;
-    },
-
-    getAutoLinkState: function (threadID) {
-        const states = this.loadAutoLinkStates();
-        return states[threadID] === 'on';
-    },
-
-    setAutoLinkState: function (threadID, state) {
-        const states = this.loadAutoLinkStates();
-        states[threadID] = state;
-        this.saveAutoLinkStates(states);
-    },
-
-    loadAutoLinkStates: function () {
         try {
-            const data = fs.readFileSync("autolink_states.json", "utf8");
-            return JSON.parse(data);
-        } catch (err) {
-            return {};
+            await processVideo(extractedUrl);
+        } catch (error) {
+            message.reply(`Failed to process video: ${error.message}`);
         }
-    },
-
-    saveAutoLinkStates: function (states) {
-        fs.writeFileSync("autolink_states.json", JSON.stringify(states, null, 2));
     }
 };
