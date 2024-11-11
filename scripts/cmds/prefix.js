@@ -36,7 +36,7 @@ module.exports = {
                 + "🤖 AI - Always here to help you, your assistant\n"
                 + "🎨 Flux - No prefix cmd, allows you to generate your imagination\n"
                 + "🧠 .g - Gemini 1.5 flash response to your every question and image reply support\n"
-                + "🎵 .s - Listen to songs from Spotify using name or link\n\n"
+                + "🎵 .sing - Listen songs from youtube search by the name.\n\n"
                 + "Feel free to ask me anything! I'm here to make your day brighter! 💖",
             error: "❌ An error occurred while fetching the meme. Please try again."
         }
