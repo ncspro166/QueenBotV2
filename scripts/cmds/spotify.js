@@ -3,8 +3,8 @@ const fs = require("fs-extra");
 const path = require("path");
 const play = require('play-dl');
 
-const SPOTIFY_CLIENT_ID = "41dd52e608ee4c4ba8b196b943db9f73";
-const SPOTIFY_CLIENT_SECRET = "5c7b438712b04d0a9fe2eaae6072fa16";
+const SPOTIFY_CLIENT_ID = "YOUR_CLIENT_ID";
+const SPOTIFY_CLIENT_SECRET = "YOUR_CLIENT_SECRET";
 
 module.exports = {
   config: {
