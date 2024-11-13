@@ -11,8 +11,7 @@ module.exports = {
         shortDescription: "Listen your favourite songs 🎵",
         longDescription: "Listen your favourite songs just by their names video support also",
         category: "media",
-        guide: "{pn} <song name>
-                {pn} <song name> [video]"
+        guide: "{pn} <song name> [video]"
     },
     onStart: async function ({ api, event, args }) {
         const youtube = google.youtube({
