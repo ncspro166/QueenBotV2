@@ -16,7 +16,7 @@ module.exports = {
   },
 
   onStart: async function ({ message, api, event }) {
-    const imgbbApiKey = "74a35e5d09c0173084be33cefb1e4fea"; // Your ImgBB API key
+    const imgbbApiKey = "YOUR_API_KEY"; // Your ImgBB API key
 
     const linkanh = event.messageReply?.attachments[0]?.url;
 
