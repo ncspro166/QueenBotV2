@@ -42,7 +42,7 @@ module.exports = {
     }
 
     try {
-      const apiUrl = `https://www.samirxpikachu.run.place/fluxpro?prompt=${encodeURIComponent(prompt)}&ratio=${aspectRatio}`;
+      const apiUrl = `http://api-samirxz.onrender.com/fluxpro?prompt=${encodeURIComponent(prompt)}&ratio=${aspectRatio}`;
       const imageStream = await global.utils.getStreamFromURL(apiUrl);
 
       if (!imageStream) {
