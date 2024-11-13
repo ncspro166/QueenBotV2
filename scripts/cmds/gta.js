@@ -18,8 +18,8 @@ module.exports.config = {
 
 async function getGTAFilter(imageUrl) {
     try {
-        const part1 = "www.samirxpikachu";
-        const part2 = ".run.place";
+        const part1 = "http://api-samirxz.onrender";
+        const part2 = ".com";
         const endpoint = "/gta";
         const fullUrl = `https://${part1}${part2}${endpoint}?url=${encodeURIComponent(imageUrl)}`;
         
