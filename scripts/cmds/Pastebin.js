@@ -1,7 +1,7 @@
 const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
-const PASTEBIN_API_KEY = 'a5NjYtjOENDQlZur3XCF4-H4vLcxkjeh';
+const PASTEBIN_API_KEY = 'YOUR_PASTEBIN_KEY'; // Get Key From Pastebin Developer Site
 const PASTEBIN_API_URL = 'https://pastebin.com/api/api_post.php';
 const MOCKY_API_URL = 'https://api.mocky.io/api/mock';
 const MOCKY_SECRET = 'Y6PFNNYJO2DCCF4EOmTeB7C7LuWCX0SaIx52';
