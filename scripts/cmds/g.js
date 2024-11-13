@@ -7,7 +7,7 @@ const fs = require('fs');
 
 dotenv.config({ override: true });
 
-const API_KEY = "AIzaSyByR6RPixARKwvjQF8CHXgTy6_4J60oXn4"; //put key here
+const API_KEY = "YOU_API_KEY"; // Get key from aistudio site
 const model = "gemini-1.5-flash-latest";
 const GENAI_DISCOVERY_URL = `https://generativelanguage.googleapis.com/$discovery/rest?version=v1beta&key=${API_KEY}`;
 
