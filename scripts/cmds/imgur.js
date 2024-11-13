@@ -3,7 +3,7 @@ const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
 
-const IMGUR_CLIENT_ID = "5ba5e80cd3433a7";
+const IMGUR_CLIENT_ID = "YOUR_CILENT_ID"; // Get ID From Imgur developer site
 
 module.exports = {
   config: {
