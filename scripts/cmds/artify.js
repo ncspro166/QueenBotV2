@@ -33,7 +33,7 @@ module.exports.onStart = async function ({ api, event, message }) {
 
         const response = await axios({
             method: 'get',
-            url: `https://www.samirxpikachu.run.place/artify`,
+            url: `http://api-samirxz.onrender.com/artify`,
             params: {
                 url: attachment.url
             },
