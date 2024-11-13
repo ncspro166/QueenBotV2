@@ -5,7 +5,7 @@ const path = require("path");
 
 async function searchYoutube(query) {
   try {
-    const response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=AIzaSyCDDV9GJU_IeepE1hbS-rrGclbqamFVV5Y&type=video&maxResults=6`);
+    const response = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=YOU_API_KEY`); // GET KEY FROM GOOGLE CONSOLE 
     return response.data.items.map(item => ({
       id: item.id.videoId,
       title: item.snippet.title,
