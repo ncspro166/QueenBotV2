@@ -27,7 +27,7 @@ module.exports = {
     api.sendMessage("⏳ Generating image, please wait...", event.threadID, event.messageID);
 
     try {
-      const apiUrl = `https://priyansh-ai.onrender.com/SD3?prompt=${encodeURIComponent(prompt)}&apikey=Pri_yanshu12`;
+      const apiUrl = `https://priyansh-ai.onrender.com/SD3?prompt=${encodeURIComponent(prompt)}&apikey=NEED_AUTHOR_PERMISSION`;
       const response = await axios.get(apiUrl);
       const imageUrl = response.data.imageUrl;
 
