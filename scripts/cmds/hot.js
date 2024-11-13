@@ -16,7 +16,7 @@ module.exports = {
 
     onStart: async function ({ message }) {
         try {
-            const response = await axios.get('https://www.hungdev.id.vn/random/videogai?&apikey=YdXxx4rIT0');
+            const response = await axios.get('https://www.hungdev.id.vn/random/videogai?&apikey=YOUR_API_KEY'); // Get key from hungdev.id.vn
             const stream = await getStreamFromURL(response.data.data);
             message.reply({
                 body: "Ｃｒｅａｔｏｒ: 𝑃𝑟𝑖𝑦𝑎𝑛𝑠ℎ𝑖 𝐾𝑎𝑢𝑟 ♕︎",
