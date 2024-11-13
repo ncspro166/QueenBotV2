@@ -1,80 +1,129 @@
-const youtubesearchapi = require("youtube-search-api");
+const { google } = require("googleapis");
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-const childProcess = require("child_process");
-
-async function getDownloadUrl(url) {
-  const curlCommand = `curl -X POST \
-  https://cnvmp3.com/fetch.php \
-  -H 'Content-Type: application/json' \
-  -d '{"url":"${url}","downloadMode":"audio","filenameStyle":"pretty","audioBitrate":"96"}'`;
-
-    const output = childProcess.execSync(curlCommand);
-    const jsonData = JSON.parse(output.toString());
-    const videoDownloadUrl = jsonData.url;
-    return videoDownloadUrl;
-}
 
 module.exports = {
-  config: {
-    name: "sing",
-    aliases: ["music", "song"],
-    version: "1.3.7",
-    role: 0,
-    author: "Shikaki",
-    cooldowns: 5,
-    description: "Download music from Youtube",
-    guide: { en: "{pn}music name" },
-    category: "media",
-  },
+    config: {
+        name: "sing",
+        version: "1.1",
+        author: "Priyanshi Kaur",
+        countDown: 5,
+        role: 0,
+        shortDescription: "Listen your favourite songs 🎵",
+        longDescription: "Listen your favourite songs just by their names video support also",
+        category: "media",
+        guide: "{pn} <song name>
+                {pn} <song name> [video]"
+    },
+    onStart: async function ({ api, event, args }) {
+        const youtube = google.youtube({
+            version: 'v3',
+            auth: 'AIzaSyDw2dm4V9TTsPmD2gdoScIuV68-GBDn9uE'
+        });
 
-  onStart: async ({ event, message }) => {
-    const input = event.body.split(" ");
-    if (input.length < 2) return message.reply("Please specify a music name!");
+        try {
+            const query = args.join(" ");
+            const isVideo = query.toLowerCase().endsWith("video");
+            const songName = isVideo ? query.slice(0, -6) : query;
 
-    input.shift();
-    const musicName = input.join(" ");
-    message.reply(`Searching music "${musicName}", please wait...`);
+            if (!songName) {
+                return api.sendMessage("Please provide a song name", event.threadID);
+            }
 
-    const searchResults = await youtubesearchapi.GetListByKeyword(musicName, false, 2);
-    if (!searchResults.items.length) return message.reply("No music found.");
+            api.sendMessage("⏳ Searching...", event.threadID);
 
-    let downloadUrl, musicTitle;
-    for (let i = 0; i < Math.min(2, searchResults.items.length); i++) {
-      try {
-        const videoUrl = `https://www.youtube.com/watch?v=${searchResults.items[i].id}`;
-        musicTitle = searchResults.items[i].title;
-        downloadUrl = await getDownloadUrl(videoUrl);
-        if (downloadUrl) break;
-      } catch (error) {
-        console.error(`Error processing video URL ${searchResults.items[i].id}:`, error);
-        if (i === 1) return message.reply("An error occurred while processing the command.");
-      }
+            const searchResponse = await youtube.search.list({
+                part: ['id', 'snippet'],
+                q: songName,
+                maxResults: 1,
+                type: 'video'
+            });
+
+            if (!searchResponse.data.items[0]) {
+                return api.sendMessage("No results found", event.threadID);
+            }
+
+            const videoId = searchResponse.data.items[0].id.videoId;
+            const videoDetails = await youtube.videos.list({
+                part: ['snippet', 'statistics', 'contentDetails'],
+                id: [videoId]
+            });
+
+            const video = videoDetails.data.items[0];
+            const channelDetails = await youtube.channels.list({
+                part: ['snippet', 'statistics'],
+                id: [video.snippet.channelId]
+            });
+
+            const downloadUrl = `https://www.hungdev.id.vn/media/downAIO?url=https://youtu.be/${videoId}&apikey=YdXxx4rIT0`;
+            const downloadResponse = await axios.get(downloadUrl);
+            const mediaData = downloadResponse.data?.data?.medias;
+            let mediaUrl;
+
+            if (isVideo) {
+                mediaUrl = mediaData.find(m => m.type === "video")?.url;
+                if (!mediaUrl) {
+                    return api.sendMessage("Video format not available", event.threadID);
+                }
+            } else {
+                mediaUrl = mediaData.find(m => m.extension === "mp3")?.url;
+                if (!mediaUrl) {
+                    return api.sendMessage("MP3 format not available", event.threadID);
+                }
+            }
+
+            const formatNumber = (num) => {
+                if (num >= 1000000000) {
+                    return (num / 1000000000).toFixed(1) + 'B';
+                }
+                if (num >= 1000000) {
+                    return (num / 1000000).toFixed(1) + 'M';
+                }
+                if (num >= 1000) {
+                    return (num / 1000).toFixed(1) + 'K';
+                }
+                return num.toString();
+            };
+
+            const formatDuration = (duration) => {
+                const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+                const hours = (match[1] || '').slice(0, -1);
+                const minutes = (match[2] || '').slice(0, -1);
+                const seconds = (match[3] || '').slice(0, -1);
+                
+                let result = '';
+                if (hours) result += `${hours}:`;
+                result += `${minutes.padStart(2, '0')}:`;
+                result += seconds.padStart(2, '0');
+                return result;
+            };
+
+            const publishDate = new Date(video.snippet.publishedAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            const messageBody = `🎵 Title: ${video.snippet.title}\n` +
+                `👤 Artist: ${video.snippet.channelTitle}\n` +
+                `⏱️ Duration: ${formatDuration(video.contentDetails.duration)}\n` +
+                `👁️ Views: ${formatNumber(video.statistics.viewCount)}\n` +
+                `👍 Likes: ${formatNumber(video.statistics.likeCount)}\n` +
+                `📅 Released: ${publishDate}\n` +
+                `💟 Channel Subscribers: ${formatNumber(channelDetails.data.items[0].statistics.subscriberCount)}\n\n` +
+                `${isVideo ? '🎥 Downloading Video...' : '🎵 Downloading Audio...'}`
+
+            const stream = await global.utils.getStreamFromURL(mediaUrl);
+            
+            await api.sendMessage(
+                {
+                    body: messageBody,
+                    attachment: stream
+                },
+                event.threadID
+            );
+
+        } catch (error) {
+            return api.sendMessage(`Error: ${error.message}`, event.threadID);
+        }
     }
-
-    if (!downloadUrl) return message.reply("No download URL found.");
-
-    try {
-      const response = await axios.get(downloadUrl, { responseType: "stream" });
-      const filePath = path.join(__dirname, "..", "..", "temp", `${Date.now()}.mp3`);
-
-      const writer = fs.createWriteStream(filePath);
-      response.data.pipe(writer);
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
-      });
-
-      await message.reply({
-        body: `💁🏻‍♂ • Here's your music!\n\n♥ • Title: ${musicTitle}`,
-        attachment: fs.createReadStream(filePath),
-      });
-
-      fs.unlinkSync(filePath);
-    } catch (error) {
-      console.error("[ERROR] Downloading or sending file:", error);
-      message.reply("An error occurred while processing the command.");
-    }
-  },
 };
