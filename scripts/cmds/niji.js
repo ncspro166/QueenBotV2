@@ -75,7 +75,7 @@ module.exports = {
       width: 1536,
       height: 640,
       ratio: "1024 x 1024",
-      apikey: "r-e377e74a78b7363636jsj8ffb61ce"
+      apikey: "YOUR_API_KEY" // GET KEY FROM https://for-devs.onrender.com/user/login
     };
 
     try {
