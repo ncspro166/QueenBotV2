@@ -34,7 +34,7 @@ module.exports = {
       const keySearchs = keySearch.substr(0, keySearch.indexOf('-')).trim();
       const numberSearch = parseInt(keySearch.split("-").pop().trim()) || 6;
 
-      const res = await axios.get(`https://for-devs.onrender.com/api/pin?search=${encodeURIComponent(keySearchs)}&apikey=r-e377e74a78b7363636jsj8ffb61ce`);
+      const res = await axios.get(`https://for-devs.onrender.com/api/pin?search=${encodeURIComponent(keySearchs)}&apikey=YOUR_API_KEY`); // GET KEY FROM https://for-devs.onrender.com/user/login
       const data = res.data.data;
 
       if (!data || !Array.isArray(data) || data.length === 0) {
