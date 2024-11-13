@@ -16,7 +16,7 @@ module.exports = {
     onStart: async function ({ api, event, args }) {
         const youtube = google.youtube({
             version: 'v3',
-            auth: 'AIzaSyDw2dm4V9TTsPmD2gdoScIuV68-GBDn9uE'
+            auth: 'YOUR_API_KEY' // GET KEY FROM GOOGLE CONSOLE
         });
 
         try {
@@ -53,7 +53,7 @@ module.exports = {
                 id: [video.snippet.channelId]
             });
 
-            const downloadUrl = `https://www.hungdev.id.vn/media/downAIO?url=https://youtu.be/${videoId}&apikey=YdXxx4rIT0`;
+            const downloadUrl = `https://www.hungdev.id.vn/media/downAIO?url=https://youtu.be/${videoId}&apikey=YOUR_API_KEY`; // GET KEY FROM hungdev.id.vn
             const downloadResponse = await axios.get(downloadUrl);
             const mediaData = downloadResponse.data?.data?.medias;
             let mediaUrl;
