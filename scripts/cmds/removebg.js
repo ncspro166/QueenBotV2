@@ -29,7 +29,7 @@ module.exports.onStart = async function ({ api, event, message }) {
     }
 
     try {
-        const apiKey = "r-e377e74a78b7363636jsj8ffb61ce";
+        const apiKey = "YOUR_API_KEY"; // GET KEY FROM https://for-devs.onrender.com/user/login
         message.reply("⌛ Removing background from your image...");
 
         const response = await axios({
