@@ -138,7 +138,7 @@ Example: {pn} a beautiful sunset -m realistic -a landscape -s 40 -c 8`
                 height: dimensions.height
             }, {
                 headers: {
-                    'X-Prodia-Key': '31d2ad0b-1579-4db2-b9a0-12a7ba8e7e6a',
+                    'X-Prodia-Key': 'YOUR_PRODIA_KEY',
                     'accept': 'application/json',
                     'content-type': 'application/json'
                 }
@@ -150,7 +150,7 @@ Example: {pn} a beautiful sunset -m realistic -a landscape -s 40 -c 8`
             while (true) {
                 const statusCheck = await axios.get(`https://api.prodia.com/v1/job/${jobId}`, {
                     headers: {
-                        'X-Prodia-Key': '31d2ad0b-1579-4db2-b9a0-12a7ba8e7e6a'
+                        'X-Prodia-Key': 'YOUR_PRODIA_KEY'
                     }
                 });
 
